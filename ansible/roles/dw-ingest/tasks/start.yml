@@ -1,0 +1,7 @@
+- name: "start datawave ingest"
+  shell: "source ~/.bash_profile && nohup ./start-all.sh -allforce &"
+  args:
+    executable: /bin/bash
+    chdir: "{{ dw_ingest_home }}/bin/system"
+  register: ingest_stat
+  changed_when: "'Starting ingesters' in ingest_stat.stdout"

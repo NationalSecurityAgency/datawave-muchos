@@ -1,0 +1,61 @@
+# The tasks below will download the wikipedia dump file and associated index from the internet. Only the index file
+# will be decompressed on the targeted host. Additional tasks and 'when' conditions were added to avoid unnecessary
+# checksumming and re-downloading by the 'get_url' module, in order to make subsequent replays a lot less painful
+
+- name: "create local directory for storing the wikipedia dump files"
+  file: path={{ wiki_dump_local_dir }} state=directory
+
+- name: "is this a replay? check for existence of data file: {{ wiki_multistream_xml_bz2 }}"
+  stat:
+    path: "{{ wiki_dump_local_dir }}/{{ wiki_multistream_xml_bz2 }}"
+    get_checksum: no
+  register: wikidump_data
+
+- set_fact:
+    wiki_multistream_index_txt_inflated: "{{ wiki_multistream_index_txt_bz2 | regex_replace('(.*)\\.bz2$', '\\1') }}"
+
+- name: "check for existence of inflated/renamed index file: {{ wiki_dump_local_dir }}/{{ wiki_multistream_index_txt_inflated }}"
+  stat:
+    path: "{{ wiki_dump_local_dir }}/{{ wiki_multistream_index_txt_inflated }}"
+    get_checksum: no
+  register: wikidump_index_inflated
+
+- name: "prior dump download succeeded? check for {{ wiki_multistream_xml_bz2_sha1 }}.success"
+  stat:
+    path: "{{ wiki_dump_local_dir }}/{{ wiki_multistream_xml_bz2_sha1 }}.success"
+  register: wikidump_data_success
+  when: wikidump_data.stat.exists
+
+- name: "prior download succeeded? check for {{ wiki_multistream_index_txt_bz2_sha1 }}.success"
+  stat:
+    path: "{{ wiki_dump_local_dir }}/{{ wiki_multistream_index_txt_bz2_sha1 }}.success"
+  register: wikidump_index_success
+  when: wikidump_data.stat.exists
+
+- name: "download wikipedia dump and index files from {{ wiki_dump_url }}"
+  get_url: url={{ item.urlp }}/{{ item.fn }} dest={{ wiki_dump_local_dir }}/{{ item.fn }} checksum=sha1:{{ item.sum }} force=no tmp_dest={{ wiki_dump_local_dir }}
+  register: gresult
+  until: "'OK' in gresult.msg or 'file already exists' in gresult.msg"
+  with_items:
+    - { urlp: "{{ wiki_dump_url }}", fn: "{{ wiki_multistream_xml_bz2 }}", sum: "{{ wiki_multistream_xml_bz2_sha1 }}" }
+    - { urlp: "{{ wiki_dump_url }}", fn: "{{ wiki_multistream_index_txt_bz2 }}", sum: "{{ wiki_multistream_index_txt_bz2_sha1 }}" }
+  when: (not (wikidump_data.stat.exists and wikidump_index_inflated.stat.exists ))
+    or (not (wikidump_data_success.stat.exists and wikidump_index_success.stat.exists))
+
+- name: "write success flags so that 'get_url' can be skipped on subsequent replays"
+  shell: echo "{{ item.fn }}" > "{{ wiki_dump_local_dir }}/{{ item.sum }}.success"
+  args:
+    executable: /bin/bash
+  with_items:
+    - { fn: "{{ wiki_multistream_xml_bz2 }}", sum: "{{ wiki_multistream_xml_bz2_sha1 }}" }
+    - { fn: "{{ wiki_multistream_index_txt_bz2 }}", sum: "{{ wiki_multistream_index_txt_bz2_sha1 }}" }
+
+- name: "yum install 'bzip2', if necessary"
+  become: yes
+  yum: name=bzip2 state=present
+
+- name: "inflate multistream index file"
+  command: "bunzip2 {{ wiki_multistream_index_txt_bz2 }}"
+  args:
+    chdir: "{{ wiki_dump_local_dir }}"
+    creates: "{{ wiki_dump_local_dir }}/{{ wiki_multistream_index_txt_inflated }}"

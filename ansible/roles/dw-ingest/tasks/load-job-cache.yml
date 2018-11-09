@@ -1,0 +1,7 @@
+- name: "load job cache"
+  shell: "source ~/.bash_profile && nohup ./load-job-cache.sh -allforce &"
+  args:
+    executable: /bin/bash
+    chdir: "{{ dw_ingest_home }}/bin/ingest"
+  register: jobcache_stat
+  changed_when: "'job cache dir' in jobcache_stat.stdout"

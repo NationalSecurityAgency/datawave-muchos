@@ -1,0 +1,27 @@
+
+# Build plugins
+
+- name: "build read-properties:{{ dw_read_properties_version }} Maven plugin, if necessary"
+  shell: "source ~/.bash_profile && mvn clean install > /dev/null"
+  args:
+    executable: /bin/bash
+    chdir: "{{ dw_clone_dir }}/contrib/read-properties"
+    creates: "{{ dw_m2_repo_dir }}/datawave/read-properties/{{ dw_read_properties_version }}/read-properties-{{ dw_read_properties_version }}.jar"
+
+- name: "build assert-properties:{{ dw_assert_properties_version }} Maven plugin, if necessary"
+  shell: "source ~/.bash_profile && mvn clean install > /dev/null"
+  args:
+    executable: /bin/bash
+    chdir: "{{ dw_clone_dir }}/contrib/assert-properties"
+    creates: "{{ dw_m2_repo_dir }}/datawave/assert-properties/{{ dw_assert_properties_version }}/assert-properties-{{ dw_assert_properties_version }}.jar"
+
+# Build DataWave
+
+- debug:
+    msg: "DataWave build command: {{ dw_build_command }}"
+
+- name: "build datawave {{ dw_project_version }}"
+  shell: "source ~/.bash_profile && {{ dw_build_command }} > /tmp/datawave-build.out"
+  args:
+    executable: /bin/bash
+    chdir: "{{ dw_clone_dir }}"

@@ -1,0 +1,32 @@
+- name: "set datawave client environment overrides"
+  lineinfile:
+    path: "/home/{{ cluster_user }}/.bashrc"
+    regexp: "^export {{ item.var }}="
+    line: "export {{ item.var }}=\"{{ item.val }}\""
+    state: present
+    insertafter: EOF
+  with_items:
+    - { var: "DW_CLIENT_HOME", val: "{{ dw_client_home }}" }
+    - { var: "DW_CLIENT_TEST_USER_ENABLED", val: "{{ dw_client_test_user_enabled | lower | default(true) }}" }
+    - { var: "DW_CLIENT_TEST_CERT", val: "{{ dw_client_test_cert }}" }
+    - { var: "DW_CLIENT_DEFAULT_QUERY_AUTHS", val: "{{ dw_client_default_query_auths | join(',') }}" }
+    - { var: "DW_BASE_URI", val: "{{ dw_base_uri }}" }
+    - { var: "PATH", val: "$PATH:$DW_CLIENT_HOME" }
+
+- name: "create datawave client home directory"
+  file:
+    path: "{{ item }}"
+    owner: "{{ cluster_user }}"
+    group: "{{ cluster_user }}"
+    mode: 0700
+    state: directory
+  with_items:
+    - "{{ dw_client_home }}"
+
+- name: "install datawave client script"
+  copy:
+    src: files/datawave
+    dest: "{{ dw_client_home }}/datawave"
+    owner: "{{ cluster_user }}"
+    group: "{{ cluster_user }}"
+    mode: 0750

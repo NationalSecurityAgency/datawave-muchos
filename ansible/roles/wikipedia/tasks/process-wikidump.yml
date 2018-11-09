@@ -1,0 +1,5 @@
+- name: "create local directory for extracting bzip2 streams from the data file"
+  file: path={{ wiki_stream_extract_dir }} state=directory
+
+- name: "extract assigned streams from the wikipedia dump file"
+  script: "files/process-wikidump.sh {{ wiki_dump_local_dir }}/{{ wiki_multistream_xml_bz2 }} {{ wiki_stream_offsets_file }} {{ wiki_max_streams_to_extract }} {{ wiki_stream_aggregation }} {{ wiki_stream_extract_dir }} {{ wiki_hdfs_ingest_input_dir }}"

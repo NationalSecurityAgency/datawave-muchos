@@ -1,0 +1,24 @@
+- name: "install web tarball"
+  unarchive: src={{ dw_web_tarball_path }} dest={{ install_dir }} creates={{ dw_web_home }}
+
+- name: "install wildfly tarball"
+  unarchive: src={{ tarballs_dir }}/{{ dw_wildfly_tarball }} dest={{ install_dir }} creates={{ dw_wildfly_home }}
+
+- name: "set WILDFLY_HOME, JBOSS_HOME, HADOOP_HOME"
+  lineinfile:
+    path: "/home/{{ cluster_user }}/.bashrc"
+    regexp: "^export {{ item }}="
+    line: "export {{ item }}={{ dw_wildfly_home }}"
+    state: present
+    insertafter: EOF
+  with_items:
+    - WILDFLY_HOME
+    - JBOSS_HOME
+    - HADOOP_HOME
+
+- name: "configure wildfly"
+  shell: "./setup-wildfly.sh"
+  args:
+    executable: /bin/bash
+    chdir: "{{ dw_web_home }}"
+    creates: "{{ dw_wildfly_home }}/modules/datawave"

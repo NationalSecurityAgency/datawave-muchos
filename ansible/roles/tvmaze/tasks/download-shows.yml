@@ -1,0 +1,35 @@
+# At completion of download, the host will write its file to hdfs, so it is assumed that all hosts targeted by the
+# play have DFSClient capability. At that point, DataWave Ingest must be running in order for files to be processed
+
+- set_fact:
+    host_index: "{{ play_hosts.index(inventory_hostname) + 1 }}"
+
+- set_fact:
+    first_show_id: "{{ ( host_index|int * tvmz_max_shows_per_host|int ) - tvmz_max_shows_per_host|int + tvmz_starting_show_id }}"
+
+- set_fact:
+    last_show_id: "{{ first_show_id|int + tvmz_max_shows_per_host|int - 1}}"
+
+- set_fact:
+    output_file: "tvmaze-{{ inventory_hostname }}-{{ first_show_id }}-{{ last_show_id }}.json"
+
+- set_fact:
+    ingest_input_dir: "{{ dw_hdfs_base_dir }}/myjson/"
+
+- debug:
+    msg: "My shows to download: {{ first_show_id }} thru {{ last_show_id }}. Local file: {{ tvmz_download_local_dir }}/{{ output_file }}"
+  when: first_show_id|int <= tvmz_max_show_id|int
+
+- debug:
+    msg: "No work for me to do. My starting show id ({{ first_show_id }}) exceeds max show id ({{ tvmz_max_show_id }})"
+  when: first_show_id|int > tvmz_max_show_id|int
+
+- name: "download tv shows to local file"
+  script: "files/download-shows.sh {{ first_show_id }} {{ last_show_id }} {{ tvmz_max_show_id }} {{ tvmz_download_local_dir }}/{{ output_file }} "
+  args:
+    creates: "{{ tvmz_download_local_dir }}/{{ output_file }}"
+  when: first_show_id|int <= tvmz_max_show_id|int
+
+- name: "load tvmaze data into hdfs dir for ingest processing: {{ ingest_input_dir }}"
+  command: "{{ hadoop_home }}/bin/hdfs dfs -moveFromLocal {{ tvmz_download_local_dir }}/{{ output_file }} {{ ingest_input_dir }}"
+  when: first_show_id|int <= tvmz_max_show_id|int

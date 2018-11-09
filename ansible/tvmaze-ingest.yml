@@ -1,0 +1,7 @@
+
+# Download TV show data files and put them in hdfs for the DataWave FlagMaker to pick up
+- hosts: tvmaze
+  roles:
+    - tvmaze
+  tasks:
+    - import_tasks: roles/tvmaze/tasks/download-shows.yml

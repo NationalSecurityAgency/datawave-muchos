@@ -1,0 +1,121 @@
+
+# Post-deployment options
+
+dw_install_web_client: True
+dw_bounce_accumulo: True
+dw_ingest_tvmaze: False
+dw_ingest_wikipedia: False
+dw_start_ingest: True
+dw_start_web: False
+
+# Force rebuild/redeploy
+
+dw_force_redeploy: False
+
+# Build
+
+dw_build_profile: "dev"
+dw_project_version: "2.4.0-SNAPSHOT"
+dw_clone_dir: "{{ cluster_basedir }}/datawave-source"
+dw_repo: "https://github.com/NationalSecurityAgency/datawave.git"
+dw_checkout_version: "master"
+dw_read_properties_version: "2.0.1"
+dw_assert_properties_version: "2.0"
+dw_build_property_overrides_dir: "{{ cluster_basedir }}/.m2/datawave/properties"
+dw_m2_repo_dir: "{{ cluster_basedir }}/.m2/repository"
+dw_build_command: "mvn -P{{ dw_build_profile }} -Dmaven.repo.local={{ dw_m2_repo_dir }} -Ddeploy -Dtar -Ddist -DskipTests clean install"
+
+# Accumulo
+
+dw_accumulo_root_auths: [PUBLIC,PRIVATE,FOO,BAR,DEF]
+dw_accumulo_vfs_context_name: "datawave"
+dw_accumulo_vfs_context_dir: "/{{ dw_accumulo_vfs_context_name }}/accumulo-classpath"
+dw_accumulo_vfs_context_config: "{{ hdfs_root }}{{ dw_accumulo_vfs_context_dir }}/.*.jar"
+
+# By default, i.e., when 'dw_accumulo_skip_shell_tasks == False', the Accumulo shell commands
+# below will run each time Accumulo is bounced via the restart-accumulo.yml playbook. So,
+# make sure there are no commands included that will be problematic to have executed multiple
+# times. Note that Accumulo 'TableExistsException' is ignored by the shell task handler.
+# Otherwise, ensure that 'dw_accumulo_skip_shell_tasks == True' on subsequent plays
+
+dw_accumulo_skip_shell_tasks: False
+dw_accumulo_shell_commands:
+  - "createnamespace datawave"
+  - "config -s table.classpath.context={{ dw_accumulo_vfs_context_name }}"
+  - "setauths -s {{ dw_accumulo_root_auths | join(',') }}"
+  - "createtable {{ dw_query_metrics_meta_table }}"
+
+# Ingest
+
+dw_ingest_dir: "datawave-{{ dw_build_profile }}-{{ dw_project_version }}"
+dw_ingest_home: "{{ install_dir }}/{{ dw_ingest_dir }}"
+dw_ingest_tarball: "{{ dw_ingest_dir }}-dist.tar.gz"
+dw_ingest_tarball_path: "{{ dw_clone_dir }}/warehouse/assemble/datawave/target/{{ dw_ingest_tarball }}"
+
+dw_num_shards: "{{ groups['workers'] | length }}"
+
+dw_all_ingest_data_types: [wikipedia,myjson]
+dw_hdfs_base_dir: "/datawave/ingest"
+dw_yarn_resource_manager: "{{ groups['resourcemanager'][0] }}:8032"
+dw_warehouse_hadoop_conf_dir: "{{ hadoop_home }}/etc/hadoop"
+dw_ingest_hadoop_conf_dir: "{{ dw_warehouse_hadoop_conf_dir }}"
+dw_mapred_ingest_opts: "-useInlineCombiner -ingestMetricsDisabled"
+dw_ingest_log_dir: "{{ dw_ingest_home }}/logs"
+dw_ingest_flag_dir: "{{ dw_ingest_home }}/flags"
+dw_flag_metrics_dir: "{{ dw_ingest_home }}/flagMetrics"
+dw_ingest_lockfile_dir: "{{ dw_ingest_home }}/locks"
+dw_flag_maker_configs: "{{ dw_ingest_home }}/config/flag-maker-live.xml,"
+dw_event_discard_interval: 0
+dw_ingest_secrets_file: "{{ dw_ingest_home }}/bin/secrets.sh"
+dw_job_cache_replication: "{{ groups['workers'] | length }}"
+dw_edge_definition_file: "config/edge-definitions.xml"
+
+# Live Ingest Jobs (Map-only, batch mutations written directly to Accumulo)
+
+dw_live_max_ingest_jobs: 5
+dw_live_max_files_per_job: 5
+dw_live_ingest_data_types: "{{ dw_all_ingest_data_types | join(',') }}"
+dw_live_queue_name: liveIngestQueue
+dw_live_child_map_max_memory_mb: 2048
+
+# Bulk Ingest Jobs (Output rfiles from reduce phase, bulk import into Accumulo)
+
+dw_bulk_max_ingest_jobs: 5
+dw_bulk_max_files_per_job: 5
+dw_bulk_ingest_data_types: ""
+dw_bulk_queue_name: bulkIngestQueue
+dw_bulk_child_map_max_memory_mb: 2048
+dw_bulk_child_reduce_max_memory_mb: 2048
+dw_bulk_ingest_reducers: "{{ dw_num_shards }}"
+dw_bulk_num_map_loaders: 1
+
+# Web Services
+
+dw_web_dir: "datawave-ws-deploy-application-{{ dw_project_version }}"
+dw_web_home: "{{ install_dir }}/{{ dw_web_dir }}"
+dw_web_tarball: "{{ dw_web_dir }}-{{ dw_build_profile }}.tar.gz"
+dw_web_tarball_path: "{{ dw_clone_dir }}/web-services/deploy/application/target/{{ dw_web_tarball }}"
+
+dw_wildfly_version: "10.1.0.Final"
+dw_wildfly_home: "{{ install_dir }}/wildfly-{{ dw_wildfly_version }}"
+dw_wildfly_tarball: "wildfly-{{ dw_wildfly_version }}.tar.gz"
+dw_wildfly_sha256: "80781609be387045273f974662dadf7f64ad43ee93395871429bc6b7786ec8bc"
+dw_wildfly_args: ""
+dw_wildfly_secure_port: 8443
+
+dw_keystore: "{{ dw_wildfly_home }}/standalone/configuration/certificates/testServer.p12"
+dw_keystore_type: PKCS12
+dw_keystore_password: secret
+dw_truststore: "{{ dw_wildfly_home }}/standalone/configuration/certificates/ca.jks"
+dw_truststore_type: JKS
+dw_truststore_password: secret
+dw_mysql_user_password: secret
+dw_jboss_jmx_password: secret
+dw_hornetq_cluster_password: secret
+dw_hornetq_system_password: secret
+dw_security_use_test_authservice: True
+dw_test_user_subject_dn: "cn=test a. user, ou=my department, o=my company, st=some-state, c=us"
+dw_test_user_issuer_dn: "cn=test ca, ou=my department, o=my company, st=some-state, c=us"
+dw_test_user_accumulo_auths: "{{ dw_accumulo_root_auths }}"
+dw_test_user_webservice_roles: [AuthorizedUser,Administrator,JBossAdministrator]
+dw_query_metrics_meta_table: "datawave.queryMetrics_m"

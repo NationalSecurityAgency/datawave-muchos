@@ -1,0 +1,31 @@
+- name: "install ingest tarball: {{ dw_ingest_tarball_path }} to {{ dw_ingest_home }}"
+  unarchive: src={{ dw_ingest_tarball_path }} dest={{ install_dir }} creates={{ dw_ingest_home }}
+
+- name: "yum install 'bc', if necessary"
+  become: yes
+  yum: name=bc state=present
+
+- name: "create hdfs input directories under {{ dw_hdfs_base_dir }}: {{ dw_all_ingest_data_types }}"
+  command: "{{ hadoop_home }}/bin/hdfs dfs -mkdir -p {{ dw_hdfs_base_dir }}/{{ item }}"
+  loop: "{{ dw_all_ingest_data_types }}"
+
+- name: "make sure ingest directories exist"
+  file:
+    path: "{{ item }}"
+    owner: "{{ cluster_user }}"
+    group: "{{ cluster_user }}"
+    mode: 0775
+    state: directory
+  with_items:
+    - "{{ dw_ingest_log_dir }}"
+    - "{{ dw_ingest_flag_dir }}"
+    - "{{ dw_flag_metrics_dir }}"
+    - "{{ dw_ingest_lockfile_dir }}"
+
+- name: "create secrets file"
+  template:
+    src: secrets.sh
+    dest: "{{ dw_ingest_secrets_file }}"
+    owner: "{{ cluster_user }}"
+    group: "{{ cluster_user }}"
+    mode: 0600

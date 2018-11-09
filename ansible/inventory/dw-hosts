@@ -1,0 +1,53 @@
+
+# The 'proxy' and 'hadoop' groups are re-declared here only as a workaround for a known
+# issue with Ansible when merging multiple inventory files. No need to assign hosts. E.g.,
+# without them, if this file happens to be parsed before the Muchos inventory file, then
+# Ansible will throw an error and fail to create the 'datawave' group below.
+
+[proxy]
+
+[hadoop]
+
+# Host for running ingest processes: flag makers, bulk loaders, ingest jobs, etc
+
+[ingestmaster]
+ingest1
+
+# Host to run the MR job history server
+
+[jobhistoryserver]
+leader2
+
+# Host(s) to deploy query and other web services
+# TODO: provide load balancing option for web servers
+
+[webservers]
+webserver1
+
+# If ingesting Wikipedia data, your proxy host will download, extract, and write bz2
+# streams to hdfs (See roles/wikipedia/README)
+#
+# Multiple hosts would actually be redundant in this context, so there's technically
+# no need for the additional group declaration here
+
+[wikipedia:children]
+proxy
+
+# If ingesting TVMAZE data, hosts assigned below will download and write the data to
+# hdfs, so they are assumed to be capable of acting as hdfs clients.
+#
+# If your hosts don't have distinct public IP addresses, then you're probably better
+# off just using a single host in this group (see roles/tvmaze/README)
+
+[tvmaze:children]
+hadoop
+
+# Assign all the above to the datawave group
+
+[datawave:children]
+proxy
+ingestmaster
+jobhistoryserver
+webservers
+wikipedia
+tvmaze

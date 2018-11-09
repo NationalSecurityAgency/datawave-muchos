@@ -1,0 +1,53 @@
+# Download any dependencies to proxy host
+
+- hosts: proxy
+  roles:
+    - common
+  tasks:
+    - import_tasks: roles/dw-web/tasks/wildfly-download.yml
+  tags: [downloads]
+
+# Build DataWave
+
+- hosts: proxy
+  roles:
+    - dw-build
+  tags: [build]
+
+# Update Accumulo configs on accumulo and ingestmaster groups
+
+- hosts: accumulo:ingestmaster
+  roles:
+    - accumulo
+  tasks:
+    - import_tasks: roles/accumulo/tasks/configure-accumulo-site.yml
+  tags: [accumulo-config]
+
+# Update Hadoop configs on hadoop and ingestmaster groups
+
+- hosts: hadoop:ingestmaster
+  roles:
+    - hadoop
+  tasks:
+    - import_tasks: roles/hadoop/tasks/configure-yarn.yml
+    - import_tasks: roles/hadoop/tasks/configure-mapred-site.yml
+  tags: [hadoop-config]
+
+# Deploy DataWave Ingest
+
+- hosts: ingestmaster
+  roles:
+    - dw-ingest
+  tags: [deploy-ingest]
+
+# Deploy DataWave Web
+
+- hosts: webservers
+  roles:
+    - dw-web
+  tags: [deploy-web]
+
+# Run optional post-deployment tasks
+
+- import_playbook: post-deployment.yml
+  tags: [post-deploy-options]

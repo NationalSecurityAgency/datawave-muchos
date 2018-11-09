@@ -1,0 +1,35 @@
+# Install client? (default: True)
+
+- import_playbook: datawave-client.yml
+  when: dw_install_web_client == True
+  tags: [install-client]
+
+# Bounce Accumulo before starting services? (default: True)
+
+- import_playbook: restart-accumulo.yml
+  when: dw_bounce_accumulo == True
+  tags: [bounce-accumulo]
+
+# Start ingest? (default: True)
+
+- import_playbook: start-ingest.yml
+  when: dw_start_ingest == True
+  tags: [start-ingest]
+
+# Ingest small subset of the TVMAZE corpus? (default: False)
+
+- import_playbook: tvmaze-ingest.yml
+  when: dw_ingest_tvmaze == True
+  tags: [ingest-tvmaze]
+
+# Ingest small subset of the Wikipedia corpus? (default: False)
+
+- import_playbook: wikipedia-ingest.yml
+  when: dw_ingest_wikipedia == True
+  tags: [ingest-wikipedia]
+
+# Start web? (default: False, unless we've auto-ingested data)
+
+- import_playbook: start-web.yml
+  when: dw_start_web == True or dw_ingest_tvmaze == True or dw_ingest_wikipedia == True
+  tags: [start-web]

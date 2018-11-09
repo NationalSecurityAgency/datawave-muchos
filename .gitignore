@@ -1,0 +1,12 @@
+inventory/muchos*
+**/*.retry
+**/*.iml
+**/.idea
+**/*.swp
+**/.classpath
+**/.project
+**/.settings
+.classpath
+.project
+.settings
+.idea

@@ -1,0 +1,40 @@
+# Determine whether or not a build is necessary
+
+- name: "clone datawave repo and checkout '{{ dw_checkout_version }}', if necessary"
+  git:
+    repo: "{{ dw_repo }}"
+    dest: "{{ dw_clone_dir }}"
+    version: "{{ dw_checkout_version }}"
+    clone: yes
+    update: no
+
+- name: "get current datawave project version"
+  shell: "source ~/.bash_profile && mvn -N -q -Dexec.executable='echo' -Dexec.args='${project.version}' exec:exec"
+  args:
+    executable: /bin/bash
+    chdir: "{{ dw_clone_dir }}"
+  register: dw_get_project_version
+
+- set_fact: dw_actual_project_version={{ dw_get_project_version.stdout }}
+
+- debug:
+    msg: "Maven found DataWave project version: {{ dw_actual_project_version }}"
+
+- fail:
+    msg: |
+      Actual DataWave project version is '{{ dw_actual_project_version }}', but dw_project_version variable is '{{ dw_project_version }}'.
+      Please correct the actual version or override 'dw_project_version' before continuing
+  when: dw_actual_project_version != dw_project_version
+
+- name: "check for existence of datawave web {{ dw_project_version }} tarball"
+  stat:
+    path: "{{ dw_web_tarball_path }}"
+  register: dw_web_archive
+
+- name: "check for existence of datawave ingest {{ dw_project_version }} tarball"
+  stat:
+    path: "{{ dw_ingest_tarball_path }}"
+  register: dw_ingest_archive
+
+- set_fact: dw_build_is_pending={{ ((not (dw_web_archive.stat.exists and dw_ingest_archive.stat.exists)) or dw_force_redeploy == True) }}
+

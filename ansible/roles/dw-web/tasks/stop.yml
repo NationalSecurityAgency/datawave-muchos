@@ -1,0 +1,7 @@
+- name: "stop datawave web gracefully"
+  shell: "pkill -15 -f 'jboss.home.dir={{ dw_wildfly_home }}'"
+  args:
+    executable: /bin/bash
+  register: wildfly_stat
+  changed_when: wildfly_stat.rc == 0
+  failed_when: wildfly_stat.rc > 1

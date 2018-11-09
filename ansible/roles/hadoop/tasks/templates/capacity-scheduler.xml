@@ -1,0 +1,78 @@
+<configuration>
+    <property>
+        <name>yarn.scheduler.capacity.maximum-applications</name>
+        <value>10000</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.maximum-am-resource-percent</name>
+        <value>0.2</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.resource-calculator</name>
+        <value>org.apache.hadoop.yarn.util.resource.DefaultResourceCalculator</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.queues</name>
+        <value>default,{{ dw_bulk_queue_name }},{{ dw_live_queue_name }}</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.default.capacity</name>
+        <value>20</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.{{ dw_bulk_queue_name }}.capacity</name>
+        <value>40</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.{{ dw_live_queue_name }}.capacity</name>
+        <value>40</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.default.user-limit-factor</name>
+        <value>0.2</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.{{ dw_bulk_queue_name }}.user-limit-factor</name>
+        <value>0.4</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.{{ dw_live_queue_name }}.user-limit-factor</name>
+        <value>0.4</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.default.maximum-capacity</name>
+        <value>100</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.{{ dw_bulk_queue_name }}.maximum-capacity</name>
+        <value>90</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.{{ dw_live_queue_name }}.maximum-capacity</name>
+        <value>90</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.default.state</name>
+        <value>RUNNING</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.{{ dw_bulk_queue_name }}.state</name>
+        <value>RUNNING</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.{{ dw_live_queue_name }}.state</name>
+        <value>RUNNING</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.default.acl_submit_applications</name>
+        <value>*</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.root.default.acl_administer_queue</name>
+        <value>*</value>
+    </property>
+    <property>
+        <name>yarn.scheduler.capacity.node-locality-delay</name>
+        <value>40</value>
+    </property>
+</configuration>

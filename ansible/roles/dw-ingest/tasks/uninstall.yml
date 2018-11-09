@@ -1,0 +1,34 @@
+# If ingestmaster is not on a dedicated host, there's a chance this task will fail due
+# to false-positives, that is, finding datawave processes that are unrelated to ingest
+- name: "uninstall ingest: if this task fails, then there are datawave ingest processes still running that must be stopped"
+  shell: "pgrep -f datawave"
+  register: pgrep_ingest_stat
+  failed_when: pgrep_ingest_stat.rc == 0
+  retries: 4
+  delay: 5
+  until: not (pgrep_ingest_stat.rc == 0)
+
+- name: "uninstall ingest: wipe all configured ingest install dirs"
+  file: path={{ item }} state=absent
+  with_items:
+    - "{{ dw_ingest_log_dir }}"
+    - "{{ dw_ingest_flag_dir }}"
+    - "{{ dw_flag_metrics_dir }}"
+    - "{{ dw_ingest_lockfile_dir }}"
+    - "{{ dw_ingest_home }}"
+
+- name: "uninstall ingest: find any leftover dirs from previous ingest versions and flag them for deletion"
+  find:
+    paths: "{{ install_dir }}"
+    patterns: "datawave-*"
+    recurse: no
+    file_type: directory
+  register: ingest_dirs_to_delete
+
+- name: "uninstall ingest: remove all leftover dirs flagged for deletion"
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ ingest_dirs_to_delete.files }}"
+  when: ingest_dirs_to_delete.matched|int > 0
+

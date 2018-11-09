@@ -1,0 +1,26 @@
+
+# Typically, you'd write only your overridden properties to the file under ~/.m2/, but here we're
+# copying the original {{ dw_build_profile }}.properties file and then appending to that the contents
+# of our template. This is just for convenience, to make it easier to grab the entire file later to
+# create and CM a new Maven profile for the current environment
+
+- name: "make sure overrides directory exists: {{ dw_build_property_overrides_dir }}"
+  file: path={{ dw_build_property_overrides_dir }} state=directory owner={{ cluster_user }} group={{ cluster_user }}
+
+- name: "copy {{ dw_build_profile }}.properties to {{ dw_build_property_overrides_dir }}/"
+  copy:
+    src: "{{ dw_clone_dir }}/properties/{{ dw_build_profile }}.properties"
+    dest: "{{ dw_build_property_overrides_dir }}/{{ dw_build_profile }}.properties"
+    owner: "{{ cluster_user }}"
+    group: "{{ cluster_user }}"
+
+- set_fact:
+    dw_m2_overrides: "{{ lookup('template', 'dw_m2_overrides.properties') }}"
+
+- name: "append overrides from template to {{ dw_build_property_overrides_dir }}/{{ dw_build_profile }}.properties"
+  blockinfile:
+    dest: "{{ dw_build_property_overrides_dir }}/{{ dw_build_profile }}.properties"
+    content: '{{ dw_m2_overrides }}'
+    state: present
+    insertafter: EOF
+  when: not( (dw_m2_overrides is none) or (dw_m2_overrides | trim == '') )

@@ -1,0 +1,7 @@
+- name: "start mapred job history server"
+  shell: "source ~/.bash_profile && ./mr-jobhistory-daemon.sh stop historyserver"
+  args:
+    executable: /bin/bash
+    chdir: "{{ hadoop_home }}/sbin"
+  register: historyserver_stat
+  changed_when: "'stopping historyserver' in historyserver_stat.stdout"

@@ -1,0 +1,16 @@
+- import_tasks: stop.yml
+  when: dw_force_redeploy == True
+  tags: [stop-ingest]
+
+- import_tasks: uninstall.yml
+  when: dw_force_redeploy == True
+  tags: [uninstall-ingest]
+
+- import_tasks: install.yml
+  tags: [install-ingest]
+
+- import_tasks: load-job-cache.yml
+  tags: [load-job-cache]
+
+- import_tasks: prepare-vfs-context.yml
+  tags: [prep-vfs]

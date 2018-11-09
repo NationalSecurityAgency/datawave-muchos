@@ -1,0 +1,4 @@
+{% for command in dw_accumulo_shell_commands %}
+{{ command }}
+{% endfor %}
+quit

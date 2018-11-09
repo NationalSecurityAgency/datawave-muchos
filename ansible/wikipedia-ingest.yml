@@ -1,0 +1,9 @@
+
+- hosts: proxy
+  roles:
+    - wikipedia
+  tasks:
+    - import_tasks: roles/wikipedia/tasks/stage-wikidump.yml
+    - import_tasks: roles/wikipedia/tasks/prepare-offsets.yml
+    - import_tasks: roles/wikipedia/tasks/process-wikidump.yml
+

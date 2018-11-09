@@ -1,0 +1,4 @@
+tvmz_download_local_dir: /tmp
+tvmz_max_shows_per_host: 50
+tvmz_starting_show_id: 1
+tvmz_max_show_id: 37199

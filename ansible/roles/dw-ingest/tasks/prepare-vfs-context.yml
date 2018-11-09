@@ -1,0 +1,21 @@
+# All the VFS classpath jars that DataWave needs are bundled in the ingest tarball
+
+- name: "if redeploying, then force deletion of {{ dw_accumulo_vfs_context_dir }}"
+  command: "{{ hadoop_home }}/bin/hdfs dfs -rm -R {{ dw_accumulo_vfs_context_dir }}"
+  register: hdfs_vfs_dir_stat
+  when: dw_force_redeploy == True
+  failed_when: hdfs_vfs_dir_stat.rc != 0 and 'No such file or directory' not in hdfs_vfs_dir_stat.stderr
+
+- name: "check status of accumulo vfs classpath in hdfs dir: {{ dw_accumulo_vfs_context_dir }}"
+  command: "{{ hadoop_home }}/bin/hdfs dfs -test -d {{ dw_accumulo_vfs_context_dir }}"
+  register: accumulo_vfs_stat
+  changed_when: accumulo_vfs_stat.rc != 0
+  failed_when: accumulo_vfs_stat.rc != 0 and accumulo_vfs_stat.stderr != ""
+
+- name: "write datawave jars to hdfs / accumulo vfs dir"
+  shell: "{{ hadoop_home }}/bin/hdfs dfs {{ item }}"
+  with_items:
+    - "-mkdir -p {{ dw_accumulo_vfs_context_dir }}"
+    - "-put -f {{ dw_ingest_home }}/accumulo-warehouse/lib/*.jar {{ dw_accumulo_vfs_context_dir }}"
+    - "-put -f {{ dw_ingest_home }}/accumulo-warehouse/lib/ext/*.jar {{ dw_accumulo_vfs_context_dir }}"
+  when: accumulo_vfs_stat.rc != 0

@@ -1,0 +1,10 @@
+- import_tasks: check-build-status.yml
+  tags: [build-status]
+
+- import_tasks: configure-build.yml
+  when: dw_build_is_pending == True
+  tags: [configure-build]
+
+- import_tasks: build-all.yml
+  when: dw_build_is_pending == True
+  tags: [execute-build]

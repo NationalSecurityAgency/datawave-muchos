@@ -1,0 +1,19 @@
+
+- name: "configure job history server in mapred-site.xml"
+  blockinfile:
+    dest: "{{ hadoop_home }}/etc/hadoop/mapred-site.xml"
+    marker: "<!-- {mark} ANSIBLE MANAGED BLOCK -->"
+    content: |
+      <property>
+           <name>mapreduce.jobhistory.address</name>
+           <value>{{ groups['jobhistoryserver'][0] }}:10020</value>
+           <description>RPC Host:Port for job history server</description>
+      </property>
+      <property>
+           <name>mapreduce.jobhistory.webapp.address</name>
+           <value>{{ groups['jobhistoryserver'][0] }}:19888</value>
+           <description>Web Client Host:Port for job history server</description>
+      </property>
+    state: present
+    insertbefore: </configuration>
+  tags: [mapred-site-xml]

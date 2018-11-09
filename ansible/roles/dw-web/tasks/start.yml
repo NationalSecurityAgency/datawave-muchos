@@ -1,0 +1,2 @@
+- name: "start datawave web"
+  script: "files/startup.sh {{ dw_wildfly_args }}"

@@ -1,0 +1,5 @@
+dw_client_home: "{{ cluster_basedir }}/dw-client"
+dw_client_test_user_enabled: True
+dw_client_test_cert: "{{ dw_clone_dir }}/web-services/deploy/application/src/main/wildfly/overlay/standalone/configuration/certificates/testUser.p12"
+dw_client_default_query_auths: "{{ dw_accumulo_root_auths }}"
+dw_base_uri: https://{{ groups['webservers'][0] }}:8443/DataWave

@@ -1,0 +1,8 @@
+
+- set_fact: wiki_stream_offsets_file={{ wiki_dump_local_dir }}/{{ wiki_multistream_index_txt_bz2 | regex_replace('(.*)\\.bz2$', '\\1') }}.offsets
+  when: (wiki_stream_offsets_file is undefined) or (wiki_stream_offsets_file is none) or (wiki_stream_offsets_file|trim == '')
+
+- name: "prepare the bz2 stream offset file from the index"
+  script: "files/prepare-offsets.sh {{ wiki_dump_local_dir }}/{{ wiki_multistream_index_txt_inflated }} {{ wiki_dump_local_dir }}/{{ wiki_multistream_xml_bz2 }} {{ wiki_stream_offsets_file }}"
+  args:
+    creates: "{{ wiki_stream_offsets_file }}"

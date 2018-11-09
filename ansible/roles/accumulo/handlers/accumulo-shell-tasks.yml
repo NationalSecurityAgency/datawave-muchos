@@ -1,0 +1,26 @@
+# These tasks work in concert to execute the accumulo shell script template
+
+# The Accumulo shell script is intended to be idempotent, so take care not to add anything
+# to the script template that will cause trouble if executed against Accumulo multiple times
+
+- name: "create tmp file for accumulo shell script"
+  tempfile:
+    state: file
+    suffix: "-datawave-init-acccumulo-shell-script"
+  register: tmp_script
+  listen: "accumulo shell tasks"
+  notify: "write accumulo shell script from template"
+
+- name: "write accumulo shell script from template"
+  template:
+    src: accumulo-shell-script
+    dest: "{{ tmp_script.path }}"
+    force: yes
+  notify: "execute accumulo shell script"
+
+- name: "execute accumulo shell script"
+  command: "{{ accumulo_home }}/bin/accumulo shell -u root -p {{ accumulo_password }} -f {{ tmp_script.path }}"
+  register: exec_accumulo_shell
+  failed_when: exec_accumulo_shell.rc != 0
+    and 'client.TableExistsException' not in exec_accumulo_shell.stdout
+    and 'client.NamespaceExistsException' not in exec_accumulo_shell.stdout

@@ -1,0 +1,13 @@
+
+- name: "configure accumulo-site.xml for datawave vfs context"
+  blockinfile:
+    dest: "{{ accumulo_home }}/conf/accumulo-site.xml"
+    marker: "<!-- {mark} ANSIBLE MANAGED BLOCK -->"
+    content: |
+      <property>
+         <name>general.vfs.context.classpath.{{ dw_accumulo_vfs_context_name }}</name>
+         <value>{{ dw_accumulo_vfs_context_config }}</value>
+      </property>
+    state: present
+    insertbefore: </configuration>
+  tags: [accumulo-site-xml]

@@ -1,0 +1,10 @@
+- import_tasks: stop.yml
+  when: dw_force_redeploy == True
+  tags: [stop-web]
+
+- import_tasks: uninstall.yml
+  when: dw_force_redeploy == True
+  tags: [uninstall-web]
+
+- import_tasks: install.yml
+  tags: [install-web]

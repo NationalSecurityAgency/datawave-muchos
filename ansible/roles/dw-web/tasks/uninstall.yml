@@ -1,0 +1,29 @@
+- name: "uninstall web: if this task fails, then there are wildfly processes still running that must be stopped"
+  shell: "pgrep -f Djboss.home.dir="
+  register: pgrep_web_stat
+  retries: 4
+  delay: 5
+  until: not (pgrep_web_stat.rc == 0)
+  failed_when: pgrep_web_stat.rc == 0
+
+- name: "uninstall web: wipe configured web service installation dirs"
+  file: path={{ item }} state=absent
+  with_items:
+    - "{{ dw_web_home }}"
+    - "{{ dw_wildfly_home }}"
+
+- name: "uninstall web: find any leftover dirs from previous versions and flag them for deletion"
+  find:
+    paths: "{{ install_dir }}"
+    patterns: "datawave-ws-deploy-application-*,wildfly-*"
+    recurse: no
+    file_type: directory
+  register: web_dirs_to_delete
+
+- name: "uninstall web: remove all leftover dirs flagged for deletion"
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ web_dirs_to_delete.files }}"
+  when: web_dirs_to_delete.matched|int > 0
+

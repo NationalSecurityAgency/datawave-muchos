@@ -1,0 +1,7 @@
+- name: "download wildfly tarball to proxy"
+  get_url: url={{ item.urlp }}/{{ item.fn }} dest={{ tarballs_dir }}/{{ item.fn }} sha256sum={{ item.sum }} force=no
+  register: gresult
+  until: "'OK' in gresult.msg or 'file already exists' in gresult.msg"
+  retries: 3
+  with_items:
+    - { urlp: "http://download.jboss.org/wildfly/{{ dw_wildfly_version }}", fn: "{{ dw_wildfly_tarball }}", sum: "{{ dw_wildfly_sha256 }}" }

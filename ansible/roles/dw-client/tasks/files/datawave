@@ -1,0 +1,637 @@
+#!/bin/bash
+
+function setColors() {
+   readonly RED="\033[31m"
+   readonly GREEN="\033[32m"
+   readonly YELLOW="\033[33m"
+   readonly BLUE="\033[34m"
+   readonly RESET_COLOR="\033[m"
+}
+
+function printRed() {
+   echo -ne "${RED}${1}${RESET_COLOR}"
+}
+
+function printYellow() {
+   echo -ne "${YELLOW}${1}${RESET_COLOR}"
+}
+
+function printGreen() {
+   echo -ne "${GREEN}${1}${RESET_COLOR}"
+}
+
+function printBlue() {
+   echo -ne "${BLUE}${1}${RESET_COLOR}"
+}
+
+function info() {
+   log "[$( printGreen "DW-INFO" )] - ${1}"
+}
+
+function warn() {
+   log "[$( printYellow "DW-WARN" )] - ${1}"
+}
+
+function error() {
+   errlog "[$( printRed "DW-ERROR" )] - ${1}"
+}
+
+function fatal() {
+   errlog "[$( printRed "DW-FATAL" )] - ${1}"
+   errlog "Aborting $( basename "$0" )"
+   exit 1
+}
+
+function log() {
+   if [ "${QUIET_MODE}" != true ] ; then
+      echo -e "${1}"
+   fi
+}
+
+function errlog() {
+   if [ "${QUIET_MODE}" != true ] ; then
+      echo -e "${1}" >&2
+   fi
+}
+
+function setTestUserIdentity() {
+
+   # Converts DW_CLIENT_TEST_CERT (i.e., testUser.p12) to PEM
+
+   [ -z "${DW_CLIENT_TEST_CERT}" ] && error "DW_CLIENT_TEST_CERT variable must be set in order to configure curl" && return 1
+   [ ! -f "${DW_CLIENT_TEST_CERT}" ] && error "Certificate not found: ${DW_CLIENT_TEST_CERT}" && return 1
+
+   readonly TEST_PKI_DIR="${DW_CLIENT_PKI_DIR:-/tmp}"
+   readonly TEST_CERT="${TEST_PKI_DIR}/testUser.pem"
+   readonly TEST_KEY="${TEST_PKI_DIR}/testUser.key"
+   readonly TEST_KEY_RSA="${TEST_PKI_DIR}/testUser.key.rsa"
+   readonly TEST_CA="${TEST_PKI_DIR}/testUser.ca"
+
+   local OPENSSL="$( which openssl )" && [ -z "${OPENSSL}" ] && error "OpenSSL executable not found" && return 1
+
+   if [ ! -f "${TEST_KEY}" ] ; then
+      ! ${OPENSSL} pkcs12 -passin "pass:secret" -passout "pass:secret" -in "${DW_CLIENT_TEST_CERT}" -out "${TEST_KEY}" -nocerts > /dev/null 2>&1 && error "Key creation failed!" && return 1
+      chmod 600 "${TEST_KEY}"
+   fi
+
+   if [ ! -f "${TEST_KEY_RSA}" ] ; then
+      ! ${OPENSSL} rsa -passin "pass:secret" -in "${TEST_KEY}" -out "${TEST_KEY_RSA}" > /dev/null 2>&1 && error "RSA key creation failed!" && return 1
+      chmod 600 "${TEST_KEY_RSA}"
+   fi
+
+   if [ ! -f "${TEST_CERT}" ] ; then
+      ! ${OPENSSL} pkcs12 -passin "pass:secret" -in "${DW_CLIENT_TEST_CERT}" -out "${TEST_CERT}" -clcerts -nokeys > /dev/null 2>&1 && error "Certificate creation failed!" && return 1
+      chmod 600 "${TEST_CERT}"
+   fi
+
+   if [ ! -f "${TEST_CA}" ] ; then
+      ! ${OPENSSL} pkcs12 -passin "pass:secret" -in "${DW_CLIENT_TEST_CERT}" -out "${TEST_CA}" -cacerts -nokeys > /dev/null 2>&1 && error "CA cert creation failed!" && return 1
+      chmod 600 "${TEST_CA}"
+   fi
+
+   readonly TEST_USER_CURL_CMD="${DW_CURL} --insecure --cert ${TEST_CERT} --key ${TEST_KEY_RSA} --cacert ${TEST_CA}}"
+
+   return 0
+}
+
+function setCurlConfig() {
+
+   DW_CURL=${DW_CURL:-$(which curl)}
+
+   DW_CLIENT_PKI_DIR="${DW_CLIENT_PKI_DIR:-${DW_CLIENT_HOME}/pki}"
+   if [ ! -d "${DW_CLIENT_PKI_DIR}" ] ; then
+      ! mkdir -p "${DW_CLIENT_PKI_DIR}" && error "Failed to create client PKI directory" && return 1
+      chmod 700 "${DW_CLIENT_PKI_DIR}"
+   fi
+
+   readonly DW_CLIENT_TEST_USER_ENABLED=${DW_CLIENT_TEST_USER_ENABLED:-true}
+   if [ "${DW_CLIENT_TEST_USER_ENABLED}" == true ] ; then
+      setTestUserIdentity || return 1
+   fi
+
+   # If the test cert is being used, then the default 'testUser' curl command below will suffice.
+   # Otherwise, you'll need to override the DW_BASE_CURL_CMD variable for your own setup
+
+   if [[ -z "${DW_BASE_CURL_CMD}" && -z "${TEST_USER_CURL_CMD}" ]] ; then
+      error "Neither DW_BASE_CURL_CMD nor TEST_USER_CURL_CMD is set. Please resolve before continuing"
+      return 1
+   fi
+
+   readonly DW_BASE_CURL_CMD="${DW_BASE_CURL_CMD:-${TEST_USER_CURL_CMD}}"
+
+   # Additional curl options, required to reliably interpret web service responses
+
+   readonly CURL_CMD_FINAL="${DW_BASE_CURL_CMD} --silent --write-out 'HTTP_STATUS_CODE:%{http_code};TOTAL_TIME:%{time_total};CONTENT_TYPE:%{content_type}'"
+
+   return 0
+}
+
+function setEnv() {
+
+   readonly DW_CLIENT_HOME="${DW_CLIENT_HOME:-"$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"}"
+   [ ! -d "${DW_CLIENT_HOME}" ] && error "DW_CLIENT_HOME directory not found: ${DW_CLIENT_HOME}" && return 1
+
+   readonly CONTENT_TYPE_JSON=application/json
+   readonly CONTENT_TYPE_XML=application/xml
+   readonly ACCEPT_DEFAULT=${DW_CLIENT_ACCEPT_DEFAULT:-${CONTENT_TYPE_JSON}}
+
+   readonly DW_BASE_URI=${DW_BASE_URI:-"https://localhost:8443/DataWave"}
+   readonly DW_QUERY_URI=${DW_QUERY_URI:-${DW_BASE_URI}/Query}
+   readonly DW_CLIENT_DEFAULT_QUERY_AUTHS=${DW_CLIENT_DEFAULT_QUERY_AUTHS:-"BAD_AUTH1,BAD_AUTH2"}
+
+   defineQueryOptions
+
+   ! setCurlConfig && error "Curl setup encountered errors. Please resolve this issue before continuing" && return 1
+
+   return 0
+}
+
+function urlencode() {
+   # Url encodes ${1}
+   local LANG=C i c e=''
+   for (( i=0; i < ${#1}; i++ )); do
+       c=${1:$i:1}
+       [[ "$c" =~ [a-zA-Z0-9\.\~\_\-] ]] || printf -v c '%%%02X' "'$c"
+       e+="$c"
+   done
+   echo "$e"
+}
+
+function autoClose204() {
+   logResponseMeta
+   if [ "${QUERY_OP}" != newQuery ] ; then
+      info "End of result set, as indicated by 204 response. Closing query automatically"
+      logCurlCommand
+      [ "${SHOW_CURL}" == true ] && local showCurlOpt="${SHOW_CURL_OPT}"
+      [ "${SHOW_META}" == true ] && local showMetaOpt="${SHOW_META_OPT}"
+      [ "${QUIET_MODE}" == true ] && local quietOpt="${QUIET_MODE_OPT}"
+      query --close ${QUERY_ID} ${showMetaOpt} ${showCurlOpt} ${quietOpt} || return 1
+   fi
+   return 0
+}
+
+function query() {
+
+   QUERY_LOGIC="EventQuery"
+   QUERY_AUTHS="${DW_CLIENT_DEFAULT_QUERY_AUTHS}"
+   QUERY_NAME="Query_$(date +%Y%m%d%H%M%S)"
+   QUERY_SYNTAX="LUCENE"
+   QUERY_BEGIN="19700101"
+   QUERY_END="20990101"
+   QUERY_LOG_VIZ="${QUERY_LOG_VIZ:-BAR&FOO}"
+   QUERY_PAGESIZE=10
+   QUERY_CREATE_MODE="createAndNext"
+   QUERY_OP="newQuery"
+
+   QUERY_EXPRESSION=""
+   QUERY_EXTRA_PARAMS=""
+   REQUEST_HEADERS=""
+
+   RESPONSE_BODY=""
+   RESPONSE_CODE=""
+   RESPONSE_TYPE=""
+   REQUEST_TOTAL_TIME=""
+
+   SHOW_CURL=false
+   SHOW_META=false
+   QUIET_MODE=false
+
+   configureRequest "${@}" || return $?
+
+   QUERY_API_CMD="$( eval ${QUERY_OP} )"
+
+   local dwResponse="$( eval "${QUERY_API_CMD}" )"
+   local curlrc=$?
+   if [ "${curlrc}" != "0" ] ; then
+       error "Curl command exited with non-zero status: ${curlrc}"
+       return ${curlrc}
+   fi
+
+   parseWebServiceResponse
+
+   if [ -n "${RESPONSE_BODY}" ] ; then
+
+       prettyPrintResponse
+
+       if [ "${QUERY_OP}" == newQuery ] ; then
+           logQueryId
+       fi
+   else
+       if [ "${RESPONSE_CODE}" == 204 ] ; then
+           autoClose204
+           return 0
+       fi
+   fi
+
+   logCurlCommand
+   logResponseMeta
+
+   if [[ ! "${RESPONSE_CODE}" =~ ^20[0,4]$ ]] ; then
+      warn "Unexpected response status: ${RESPONSE_CODE}"
+      return 1
+   fi
+
+   return 0
+}
+
+function queryIdIsValid() {
+   [ -z "${QUERY_ID}" ] && error "QUERY_ID cannot be null" && return 1
+   [ -z "$( echo "${QUERY_ID}" | grep -E '^[a-zA-Z0-9\-]+$' )" ] && error "'${QUERY_ID}' is not a valid query id" && return 1
+   return 0
+}
+
+function newQuery() {
+   echo "${CURL_CMD_FINAL} \
+   --header 'Content-Type: application/x-www-form-urlencoded' --header 'Accept: ${ACCEPT_DEFAULT}' \
+   ${REQUEST_HEADERS} ${CURL_DATA} -X POST ${DW_BASE_URI}/Query/${QUERY_LOGIC}/${QUERY_CREATE_MODE}"
+}
+
+function closeQuery() {
+   echo "${CURL_CMD_FINAL} -X PUT ${DW_BASE_URI}/Query/${QUERY_ID}/close"
+}
+
+function nextPage() {
+   echo "${CURL_CMD_FINAL} --header 'Accept: ${ACCEPT_DEFAULT}' ${REQUEST_HEADERS} -X GET ${DW_BASE_URI}/Query/${QUERY_ID}/next"
+}
+
+function parseWebServiceResponse() {
+   RESPONSE_BODY=$( echo ${dwResponse} | sed -e 's/HTTP_STATUS_CODE\:.*//g' )
+   RESPONSE_CODE=$( echo ${dwResponse} | tr -d '\n' | sed -e 's/.*HTTP_STATUS_CODE://' | sed -e 's/;TOTAL_TIME\:.*//' )
+   RESPONSE_TYPE=$( echo ${dwResponse} | tr -d '\n' | sed -e 's/.*CONTENT_TYPE://' )
+   REQUEST_TOTAL_TIME=$( echo ${dwResponse} | tr -d '\n' | sed -e 's/.*TOTAL_TIME://' | sed -e 's/;CONTENT_TYPE\:.*//' )
+}
+
+function logCurlCommand() {
+   if [ "${SHOW_CURL}" == true ] ; then
+      log "$( printGreen "Curl Command" ): ${QUERY_API_CMD}"
+   fi
+}
+
+function logResponseMeta() {
+   if [ "${SHOW_META}" == true ] ; then
+      local responseCodeLabel="$( printGreen "Response Code" )"
+      if [[ ! "${RESPONSE_CODE}" =~ ^20[0,4]$ ]] ; then
+         responseCodeLabel="$( printRed "Response Code" )"
+      fi
+      log "$( printGreen "Time" ): ${REQUEST_TOTAL_TIME} ${responseCodeLabel}: ${RESPONSE_CODE} $( printGreen "Response Type" ): ${RESPONSE_TYPE:-N/A}"
+   fi
+}
+
+function logQueryId() {
+   QUERY_ID=""
+   if [ "${RESPONSE_TYPE}" == "${CONTENT_TYPE_JSON}" ] ; then
+      setQueryIdFromResponseJson
+   elif [ "${RESPONSE_TYPE}" == "${CONTENT_TYPE_XML}" ] ; then
+      setQueryIdFromResponseXml
+   else
+      warn "I don't know how to parse the query id from this response type: ${RESPONSE_TYPE}"
+   fi
+
+   if [ "${SHOW_META}" == true ] ; then
+      log "$( printGreen "Query ID" ): ${QUERY_ID:-N/A}"
+   fi
+}
+
+function setQueryIdFromResponseXml() {
+   local id="$( echo "${RESPONSE_BODY}" | sed -e 's~<[?]xml .*><QueryId>\(.*\)</QueryId>.*~\1~' | sed -e 's~<[?]xml .*><Result .*>\(.*\)</Result>.*~\1~' )"
+   id="$( echo ${id} | grep -E '^[a-zA-Z0-9\-]+$' )"
+   [ -n "${id}" ] && QUERY_ID=${id}
+}
+
+function setQueryIdFromResponseJson() {
+   local id="$( echo "${RESPONSE_BODY}" | sed -e 's~.*"QueryId":"\([a-zA-Z0-9\-]\+\)".*~\1~' | sed -e 's~.*"Result":"\([a-zA-Z0-9\-]\+\)"}.*~\1~' )"
+   id="$( echo ${id} | grep -E '^[a-zA-Z0-9\-]+$' )"
+   [ -n "${id}" ] && QUERY_ID=${id}
+}
+
+function prettyPrintResponse() {
+   if [ "${RESPONSE_TYPE}" == "${CONTENT_TYPE_JSON}" ] ; then
+      prettyPrintJson
+   elif [ "${RESPONSE_TYPE}" == "${CONTENT_TYPE_XML}" ] ; then
+      prettyPrintXml
+   else
+      echo "${RESPONSE_BODY}"
+   fi
+}
+
+function prettyPrintJson() {
+    local PY=$( which python )
+    if [ -n "${PY}" ] ; then
+        echo "${RESPONSE_BODY}" | ${PY} -c 'import sys,json;data=json.loads(sys.stdin.read()); print json.dumps(data, indent=2, sort_keys=True)'
+        local exitStatus=$?
+        if [ "${exitStatus}" != "0" ] ; then
+           echo "${RESPONSE_BODY}"
+           warn "Python encountered error (${exitStatus}). Printed response without formatting"
+        fi
+    else
+        echo "${RESPONSE_BODY}"
+        warn "Couldn't find python in your environment. Printed response without formatting"
+    fi
+}
+
+function prettyPrintXml() {
+    local XMLLINT=$( which xmllint )
+    if [ -n "${XMLLINT}" ] ; then
+        echo "${RESPONSE_BODY}" | ${XMLLINT} --format -
+        local exitStatus=$?
+        if [ "${exitStatus}" != "0" ] ; then
+           echo "${RESPONSE_BODY}"
+           warn "xmllint encountered error (${exitStatus}). Printed response without formatting"
+        fi
+    else
+        echo "${RESPONSE_BODY}"
+        warn "Couldn't find xmllint in your environment. Printed response without formatting"
+    fi
+}
+
+function setCurlData() {
+   CURL_DATA="" ; for param in "${@}" ; do
+      CURL_DATA="${CURL_DATA} -d ${param}"
+   done
+}
+
+function defineQueryOptions() {
+
+   readonly QUERY_EXPR_OPT="--expression"
+   readonly QUERY_EXPR_OPT_S="-E"
+
+   readonly QUERY_LOGIC_OPT="--logic"
+   readonly QUERY_LOGIC_OPT_S="-l"
+
+   readonly QUERY_BEGIN_OPT="--begin"
+   readonly QUERY_BEGIN_OPT_S="-b"
+
+   readonly QUERY_END_OPT="--end"
+   readonly QUERY_END_OPT_S="-e"
+
+   readonly QUERY_LOG_VIZ_OPT="--log-visibility"
+
+   readonly QUERY_AUTHS_OPT="--auths"
+   readonly QUERY_AUTHS_OPT_S="-a"
+
+   readonly QUERY_SYNTAX_OPT="--syntax"
+   readonly QUERY_SYNTAX_OPT_S="-s"
+
+   readonly QUERY_PAGESIZE_OPT="--pagesize"
+   readonly QUERY_PAGESIZE_OPT_S="-p"
+
+   readonly QUERY_CREATE_MODE_OPT="--create-only"
+   readonly QUERY_CREATE_MODE_OPT_S="-C"
+
+   readonly QUERY_NEXT_PAGE_OPT="--next"
+   readonly QUERY_NEXT_PAGE_OPT_S="-n"
+
+   readonly QUERY_CLOSE_OPT="--close"
+   readonly QUERY_CLOSE_OPT_S="-c"
+
+   readonly ADD_QUERY_PARAM_OPT="--param"
+   readonly ADD_QUERY_PARAM_OPT_S="-P"
+
+   readonly ADD_REQUEST_HEADER_OPT="--header"
+   readonly ADD_REQUEST_HEADER_OPT_S="-H"
+
+   readonly REQUEST_XML_OPT="--xml"
+   readonly REQUEST_XML_OPT_S="-x"
+
+   readonly QUERY_HELP_OPT="--help"
+   readonly QUERY_HELP_OPT_S="-h"
+
+   readonly SHOW_CURL_OPT="--show-curl"
+   readonly SHOW_META_OPT="--show-meta"
+   readonly QUIET_MODE_OPT="--quiet"
+}
+
+function configureRequest() {
+
+   while [ "${1}" != "" ]; do
+      case "${1}" in
+         ${QUERY_EXPR_OPT} | ${QUERY_EXPR_OPT_S})
+            QUERY_EXPRESSION="$( urlencode "${2}" )"
+            shift
+            ;;
+         ${QUERY_LOGIC_OPT} | ${QUERY_LOGIC_OPT_S})
+            QUERY_LOGIC="${2}"
+            shift
+            ;;
+         ${QUERY_BEGIN_OPT} | ${QUERY_BEGIN_OPT_S})
+            QUERY_BEGIN="${2}"
+            shift
+            ;;
+         ${QUERY_END_OPT} | ${QUERY_END_OPT_S})
+            QUERY_END="${2}"
+            shift
+            ;;
+         ${QUERY_LOG_VIZ_OPT})
+            QUERY_LOG_VIZ="${2}"
+            shift
+            ;;
+         ${QUERY_AUTHS_OPT} | ${QUERY_AUTHS_OPT_S})
+            QUERY_AUTHS="${2}"
+            shift
+            ;;
+         ${QUERY_SYNTAX_OPT} | ${QUERY_SYNTAX_OPT_S})
+            QUERY_SYNTAX="${2}"
+            shift
+            ;;
+         ${QUERY_PAGESIZE_OPT} | ${QUERY_PAGESIZE_OPT_S})
+            QUERY_PAGESIZE="${2}"
+            shift
+            ;;
+         ${QUERY_CREATE_MODE_OPT} | ${QUERY_CREATE_MODE_OPT_S})
+            QUERY_CREATE_MODE=create
+            ;;
+         ${QUERY_NEXT_PAGE_OPT} | ${QUERY_NEXT_PAGE_OPT_S})
+            QUERY_ID="${2}"
+            QUERY_OP=nextPage
+            shift
+            ;;
+         ${QUERY_CLOSE_OPT} | ${QUERY_CLOSE_OPT_S})
+            QUERY_ID="${2}"
+            QUERY_OP=closeQuery
+            shift
+            ;;
+         ${ADD_QUERY_PARAM_OPT} | ${ADD_QUERY_PARAM_OPT_S})
+            QUERY_EXTRA_PARAMS="${QUERY_EXTRA_PARAMS} ${2%%=*}=$( urlencode "${2#*=}" )"
+            shift
+            ;;
+         ${ADD_REQUEST_HEADER_OPT} | ${ADD_REQUEST_HEADER_OPT_S})
+            REQUEST_HEADERS="${REQUEST_HEADERS} ${1} '${2}'"
+            shift
+            ;;
+         ${REQUEST_XML_OPT} | ${REQUEST_XML_OPT_S})
+            REQUEST_HEADERS="${REQUEST_HEADERS} --header 'Accept: ${CONTENT_TYPE_XML}'"
+            ;;
+         ${QUERY_HELP_OPT} | ${QUERY_HELP_OPT_S})
+            queryHelp && return 1
+            ;;
+         ${QUIET_MODE_OPT})
+            QUIET_MODE=true
+            ;;
+         ${SHOW_CURL_OPT})
+            SHOW_CURL=true
+            ;;
+         ${SHOW_META_OPT})
+            SHOW_META=true
+            ;;
+         *)
+            error "Invalid argument passed to $( basename "$0" ) query: ${1}" && return 1
+      esac
+      shift
+   done
+
+   if [ "$QUERY_OP" == newQuery ] ; then
+      [ -z "${QUERY_EXPRESSION}" ] && error "Query expression is required" && return 1
+
+      setCurlData \
+         "query=${QUERY_EXPRESSION}" \
+         "queryName=${QUERY_NAME}" \
+         "auths=${QUERY_AUTHS}" \
+         "begin=${QUERY_BEGIN}" \
+         "end=${QUERY_END}" \
+         "pagesize=${QUERY_PAGESIZE}" \
+         "query.syntax=${QUERY_SYNTAX}" \
+         "columnVisibility=$( urlencode "${QUERY_LOG_VIZ}" )" \
+         ${QUERY_EXTRA_PARAMS}
+   else
+      ! queryIdIsValid && return 1
+   fi
+
+   return 0
+}
+
+function queryHelp() {
+    echo
+    echo " The $( printGreen "query" ) shell function provides a curl-based client for submitting queries to DataWave's"
+    echo " Rest API. It sets reasonable defaults for most curl- and DataWave-specific parameters"
+    echo
+    echo " The function will return zero if status code 200 or 204 is received from DataWave, non-zero otherwise"
+    echo
+    echo " E.g., \$ $( basename "$0" ) $( printGreen query ) ${QUERY_EXPR_OPT} \"PAGE_TITLE:*Computing\""
+    echo "       \$ $( basename "$0" ) $( printGreen query ) ${QUERY_NEXT_PAGE_OPT} 09aa3d46-8aa0-49fb-8859-f3add48859b0"
+    echo "       \$ $( basename "$0" ) $( printGreen query ) ${QUERY_CLOSE_OPT} 09aa3d46-8aa0-49fb-8859-f3add48859b0"
+    echo
+    echo " $( printGreen ${QUERY_EXPR_OPT_S} ),$( printGreen ${QUERY_EXPR_OPT} ) \"<EXPRESSION>\""
+    echo "  Query expression. LUCENE syntax is assumed by default, but you may override via $( printGreen ${QUERY_SYNTAX_OPT} ),$( printGreen ${QUERY_SYNTAX_OPT_S} ) option"
+    echo
+    echo " $( printGreen ${QUERY_LOGIC_OPT_S} ),$( printGreen ${QUERY_LOGIC_OPT} ) <logicName>"
+    echo "  Specify the logic name to utilize for the query. Defaults to \"${QUERY_LOGIC}\""
+    echo
+    echo " $( printGreen ${QUERY_BEGIN_OPT_S} ),$( printGreen ${QUERY_BEGIN_OPT} ) \"yyyyMMdd[ HHmmss.SSS]\""
+    echo "  Begin date for query's shard date range. Defaults to ${QUERY_BEGIN}"
+    echo
+    echo " $( printGreen ${QUERY_END_OPT_S} ),$( printGreen ${QUERY_END_OPT} ) \"yyyyMMdd[ HHmmss.SSS]\""
+    echo "  End date for query's shard date range. Defaults to ${QUERY_END}"
+    echo
+    echo " $( printGreen ${QUERY_AUTHS_OPT_S} ),$( printGreen ${QUERY_AUTHS_OPT} ) A1,A2,A3,..."
+    echo "  List of Accumulo auths to enable for the query. Only data with these auths will be returned"
+    echo "  Defaults to \"${QUERY_AUTHS}\" to match those used on DataWave's sample datasets"
+    echo
+    echo " $( printGreen ${QUERY_SYNTAX_OPT_S} ),$( printGreen ${QUERY_SYNTAX_OPT} ) <syntax>"
+    echo "  Identifies the query expression syntax being used. E.g., LUCENE, JEXL, etc. Defaults to ${QUERY_SYNTAX}"
+    echo
+    echo " $( printGreen ${QUERY_PAGESIZE_OPT_S} ),$( printGreen ${QUERY_PAGESIZE_OPT} ) <int>"
+    echo "  Sets the page size to be used for each page of query results. Defaults to ${QUERY_PAGESIZE}"
+    echo
+    echo " $( printGreen ${QUERY_LOG_VIZ_OPT} ) <visibility-expression>"
+    echo "  Visibility expression to use when logging this query to Accumulo. Defaults to '${QUERY_LOG_VIZ}'"
+    echo
+    echo " $( printGreen ${QUERY_CREATE_MODE_OPT_S} ),$( printGreen ${QUERY_CREATE_MODE_OPT} )"
+    echo "  Uses the 'Query/{logic}/create' endpoint, rather than the default, 'Query/{logic}/createAndNext' which creates"
+    echo "  query and gets first page w/ one request"
+    echo
+    echo " $( printGreen ${QUERY_NEXT_PAGE_OPT_S} ),$( printGreen ${QUERY_NEXT_PAGE_OPT} ) <QueryID> "
+    echo "  Gets the next page of results for the specified query id. Response code 204 indicates end of result set"
+    echo
+    echo " $( printGreen  ${QUERY_CLOSE_OPT_S} ),$( printGreen ${QUERY_CLOSE_OPT} ) <QueryID> "
+    echo "  Releases all server side resources being utilized for the specified query id"
+    echo
+    echo " $( printGreen ${ADD_QUERY_PARAM_OPT_S} ),$( printGreen ${ADD_QUERY_PARAM_OPT} ) \"paramName=paramValue\""
+    echo "  Adds the specified query parameter name/value to the 'create' or 'createAndNext' request"
+    echo
+    echo " $( printGreen ${ADD_REQUEST_HEADER_OPT_S} ),$( printGreen ${ADD_REQUEST_HEADER_OPT} ) \"HeaderName: HeaderValue\""
+    echo "  Adds specified name/value pair to the curl command as an HTTP request header. Note that"
+    echo "  '$(printGreen "Accept"): ${CONTENT_TYPE_JSON}' is added by default, but may be overridden via this option"
+    echo
+    echo " $( printGreen ${REQUEST_XML_OPT_S} ),$( printGreen ${REQUEST_XML_OPT} )"
+    echo "  Adds '$( printGreen Accept ): ${CONTENT_TYPE_XML}' as an HTTP request header to override the default JSON"
+    echo
+    echo " $( printGreen ${QUIET_MODE_OPT} )"
+    echo "  Suppress all output except for web service response body. Supersedes $( printGreen ${SHOW_CURL_OPT} ) and $( printGreen ${SHOW_META_OPT} )"
+    echo
+    echo " $( printGreen ${SHOW_CURL_OPT} )"
+    echo "  Display the curl command. Superseded by $( printGreen ${QUIET_MODE_OPT} ) flag"
+    echo
+    echo " $( printGreen ${SHOW_META_OPT} )"
+    echo "  Display web service response meta (query id, status code, content type, time elapsed). Superseded by $( printGreen ${QUIET_MODE_OPT} ) flag"
+    echo
+    echo " $( printGreen ${QUERY_HELP_OPT_S} ),$( printGreen ${QUERY_HELP_OPT} )"
+    echo "  Print this usage information and exit"
+    echo
+}
+
+function reloadDataWaveTableCache() {
+
+   CACHED_META_TABLES=${CACHED_META_TABLES:-"datawave.metadata datawave.queryMetrics_m datawave.error_m"}
+
+   # This function will force a refresh of certain Accumulo table caches in Wildfly, i.e., those used to cache
+   # DataWave's data element dictionaries. Otherwise, you might be forced to bounce Wildfly or wait for the
+   # caches to reload automatically at the configured refresh interval.
+
+   # This is particularly useful when you want to query newly ingested data and search on new field names, which
+   # haven't yet arrived in the Wildfly cache.
+
+   # Note that the reload endpoint may perform the work asynchronously, so there could still be some delay
+   # before the refresh takes effect
+
+   local cachedTables=(${CACHED_META_TABLES})
+
+   for table in "${cachedTables[@]}" ; do
+
+      info "Reloading cache for metadata table: ${table}"
+
+      local curlcmd="${CURL_CMD_FINAL} -X GET ${DW_BASE_URI}/Common/AccumuloTableCache/reload/${table}"
+      local dwResponse="$( eval "${curlcmd}" )"
+      local curlrc=$?
+      if [ "${curlrc}" != "0" ] ; then
+          error "Curl command exited with non-zero status: ${curlrc}. Failed to update table cache: ${table}"
+          return 1
+      else
+          parseWebServiceResponse
+          logResponseMeta
+      fi
+   done
+
+   return 0
+}
+
+function usage() {
+   echo
+   echo " $( printGreen Usage: ) $( basename "$0" ) [OPTIONS]"
+   echo " $( printGreen Options: ) (all options are mutually exclusive)"
+   echo "   -h,--help       | Print this usage info and exit"
+   echo "   query [OPTIONS] | View all query options: $( printGreen "$( basename "$0" ) query -h,--help" )"
+   echo "   reload-cache    | Force Wildfly to reload cached DataWave metadata tables (i.e, data dictionaries)"
+   echo
+}
+
+setColors
+[ -z "${1}" ] && usage && exit 1
+
+! setEnv && error "Environment setup failed" && exit 1
+
+case "${1}" in
+   query)
+      shift
+      query "$@" || exit 1
+      ;;
+   reload-cache)
+      reloadDataWaveTableCache || exit 1
+      ;;
+   -h|--help)
+      usage
+      ;;
+   *)
+      error "Invalid argument passed to $( basename "$0" ): ${1}" && usage && exit 1
+esac
+
+exit 0

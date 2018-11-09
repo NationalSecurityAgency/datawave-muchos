@@ -1,0 +1,17 @@
+- name: "before attempting to stop ingest, check for existence {{ dw_ingest_home }}/bin/system/stop-all.sh"
+  stat:
+    path: "{{ dw_ingest_home }}/bin/system/stop-all.sh"
+  register: ingest_stop_script
+
+- debug:
+    msg: "weird. i was asked to stop ingest, but it doesn't appear to be installed. kill processes manually if necessary"
+  when: not ingest_stop_script.stat.exists
+
+- name: "stop datawave ingest"
+  shell: "source ~/.bash_profile && ./stop-all.sh"
+  args:
+    executable: /bin/bash
+    chdir: "{{ dw_ingest_home }}/bin/system"
+  register: ingest_stat
+  when: ingest_stop_script.stat.exists
+  changed_when: "'Stopping ingesters' in ingest_stat.stdout"

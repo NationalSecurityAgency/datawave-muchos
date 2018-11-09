@@ -1,0 +1,31 @@
+# TODO: provide fair scheduler option and make scheduler type selectable via ansible config
+
+- name: "check for backup of the original (muchos) yarn-site.xml"
+  stat:
+    path: "{{ hadoop_home }}/etc/hadoop/yarn-site.xml.muchos-original"
+  register: yarn_site_backup
+
+- name: "check for backup of the original (muchos) capacity-scheduler.xml"
+  stat:
+    path: "{{ hadoop_home }}/etc/hadoop/capacity-scheduler.xml.muchos-original"
+  register: capacity_sched_backup
+
+- name: "backup yarn-site.xml, if necessary"
+  copy:
+    src: "{{ hadoop_home }}/etc/hadoop/yarn-site.xml"
+    dest: "{{ hadoop_home }}/etc/hadoop/yarn-site.xml.muchos-original"
+    remote_src: yes
+  when: not yarn_site_backup.stat.exists
+
+- name: "backup capacity-scheduler.xml, if necessary"
+  copy:
+    src: "{{ hadoop_home }}/etc/hadoop/capacity-scheduler.xml"
+    dest: "{{ hadoop_home }}/etc/hadoop/capacity-scheduler.xml.muchos-original"
+    remote_src: yes
+  when: not capacity_sched_backup.stat.exists
+
+- name: "configure hadoop yarn for datawave mapreduce"
+  template: src={{ item }} dest={{ hadoop_home }}/etc/hadoop/{{ item }}
+  with_items:
+    - yarn-site.xml
+    - capacity-scheduler.xml

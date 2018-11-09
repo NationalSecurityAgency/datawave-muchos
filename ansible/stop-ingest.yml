@@ -1,0 +1,11 @@
+- hosts: ingestmaster
+  roles:
+    - common
+  tasks:
+    - import_tasks: roles/dw-ingest/tasks/stop.yml
+
+- hosts: jobhistoryserver
+  roles:
+    - hadoop
+  tasks:
+    - import_tasks: roles/hadoop/tasks/stop-jobhistory-server.yml
