@@ -34,6 +34,15 @@ Testing/verification has been performed on AWS using the following
 |----------|---------|---------|
 | [6e786a0](https://github.com/apache/fluo-muchos/commit/6e786a0f43e4be01ce15fe1bf9fc7aeafd46739f) | [muchos.props.example](muchos.props.example) | [116e1f8](https://github.com/NationalSecurityAgency/datawave/commit/116e1f87e2879fea498a76b4903e578cc6a06dda) |
 
+**Prerequisites / Assumptions**
+
+* Familiarity with the basics of Ansible is recommended but not required
+* Familiarity with the following is assumed
+  * Hadoop HDFS and MapReduce
+  * Accumulo and ZooKeeper
+  * DataWave
+  * Muchos (see Muchos documentation for prerequisites)
+
 ## Get Started
 
 1. Use [Muchos][muchos] to set up your cluster.
