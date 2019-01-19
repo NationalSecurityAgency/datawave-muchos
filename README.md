@@ -45,7 +45,7 @@ Testing/verification has been performed on AWS using the following
 
 ## Get Started
 
-1. Use [Muchos][muchos] to set up your cluster.
+**1. Use [Muchos][muchos] to set up your cluster**
 
    If desired, you can have Muchos launch dedicated EC2 hosts for DataWave's ingest master and web
    server(s) by adding them as nodes of type *client* in your **muchos.props** as follows:
@@ -61,8 +61,8 @@ Testing/verification has been performed on AWS using the following
    
    
 
-2. When Muchos setup is complete, ssh to your proxy host and clone this repository.
-   For example:
+**2. When Muchos setup is complete, ssh to your proxy host and clone this repository.
+   For example:**
    ```bash
    <me@localhost>$ cd /path/to/fluo-muchos
    <me@localhost>$ bin/muchos ssh
@@ -72,7 +72,7 @@ Testing/verification has been performed on AWS using the following
    Remaining tasks below should be performed on the proxy host as the user denoted by your
    `cluster_user` variable.
    
-3. Symlink your Muchos inventory and assign your DataWave-specific hosts in the *dw-hosts* file.
+**3. Symlink your Muchos inventory and assign your DataWave-specific hosts in the *dw-hosts* file**
    ```bash
    $ cd datawave-muchos/ansible/inventory
 
@@ -88,7 +88,7 @@ Testing/verification has been performed on AWS using the following
    
    At this point, you should have only two files in the directory, *muchos-hosts* and *dw-hosts*.
    
-4. Configure your *all* group and *datawave* group variables.
+**4. Configure your *all* group and *datawave* group variables**
    ```bash
    $ cd datawave-muchos/ansible/group_vars
 
@@ -107,7 +107,7 @@ Testing/verification has been performed on AWS using the following
    * Often, you'll find it convenient to override variables from the command line via Ansible's `-e / --extra-vars`
      option, as demonstrated below in [post-deployment/force redeploy](#force-redeploy)
      
-5. Lastly, build/deploy DataWave with the [datawave.yml](ansible/datawave.yml) playbook.
+**5. Lastly, build/deploy DataWave with the [datawave.yml](ansible/datawave.yml) playbook**
    ```bash
    $ cd datawave-muchos/ansible
    $ ansible-playbook -i inventory datawave.yml
