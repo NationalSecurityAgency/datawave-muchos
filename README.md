@@ -115,7 +115,7 @@ Testing/verification has been performed on AWS using the following
    # Or equivalently...
    $ scripts/dw-play.sh
    ```
-   * The *dw-build* role will first git-clone a remote DataWave repository on your proxy host, as configured by the
+   * **Note**: The *dw-build* role will first git-clone a remote DataWave repository on your proxy host, as configured by the
      following variables: `dw_repo`, `dw_clone_dir`, `dw_checkout_version`
      
    * **Note**: To build DataWave's ingest and web tarballs, the proxy host will need a few GB free on the volume containing
@@ -123,6 +123,10 @@ Testing/verification has been performed on AWS using the following
      depending on the source AMI and storage configuration, you may need to
      [attach and mount a volume](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-attaching-volume.html) large enough
      to accomodate these directories, configured via `dw_clone_dir` and `dw_m2_repo_dir` respectively
+     
+   * **Note**: By default, ingest services should be started up automatically on your `ingestmaster` host upon
+     successful completion of the `datawave.yml` playbook. See [this issue](https://github.com/NationalSecurityAgency/datawave-muchos/issues/1) for instructions to verify that services started successfully
+  
    
 ## Post-Deployment
 
@@ -224,7 +228,9 @@ $ ansible-playbook -i inventory start-ingest.yml
 # Stop
 $ ansible-playbook -i inventory stop-ingest.yml
 ```
-See also [scripts/dw-services-start.sh](scripts/dw-services-start.sh) and [scripts/dw-services-stop.sh](scripts/dw-services-stop.sh)
+* See also [scripts/dw-services-start.sh](scripts/dw-services-start.sh) and [scripts/dw-services-stop.sh](scripts/dw-services-stop.sh)
+* **Note**: See [this issue](https://github.com/NationalSecurityAgency/datawave-muchos/issues/1) for instructions to verify that 
+  ingest services were started successfully by the `start-ingest.yml` playbook
 
 #### Start/Stop Web Services
 
