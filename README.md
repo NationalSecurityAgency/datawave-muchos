@@ -115,7 +115,7 @@ Testing/verification has been performed on AWS using the following
    # Or equivalently...
    $ scripts/dw-play.sh
    ```
-   * **Note**: The *dw-build* role will first git-clone a remote DataWave repository on your proxy host, as configured by the
+   * **Note**: The [**dw-build**](ansible/roles/dw-build) role will first git-clone a remote DataWave repository on your proxy host, as configured by the
      following variables: `dw_repo`, `dw_clone_dir`, `dw_checkout_version`
      
    * **Note**: To build DataWave's ingest and web tarballs, the proxy host will need a few GB free on the volume containing
