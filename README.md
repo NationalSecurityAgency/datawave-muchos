@@ -104,8 +104,10 @@ Testing/verification has been performed on AWS using the following
 
    * Most of the variables you'll care about are here: [ansible/roles/common/defaults/main.yml](ansible/roles/common/defaults/main.yml)
    
-   * Often, you'll find it convenient to override variables from the command line via Ansible's `-e / --extra-vars`
-     option, as demonstrated below in [post-deployment/force redeploy](#force-redeploy)
+   * You may find it convenient to override variables from the command line via Ansible's `-e / --extra-vars`
+     option, as demonstrated below in [post-deployment/force redeploy](#force-redeploy). (In Ansible, command line
+     overrides receive the highest possible precedence)
+     
      
 **5. Lastly, build/deploy DataWave with the [datawave.yml](ansible/datawave.yml) playbook**
    ```bash
