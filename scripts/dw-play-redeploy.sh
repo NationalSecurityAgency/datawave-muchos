@@ -5,6 +5,13 @@
 
 # Note that any script arguments are passed thru to Ansible directly.
 
-readonly SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+#readonly SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-"${SCRIPT_DIR}"/dw-play.sh -e '{ "dw_force_redeploy": true }' $@
+#"${SCRIPT_DIR}"/dw-play.sh -e '{ "dw_force_redeploy": true }' $@
+
+readonly ANSIBLE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../ansible" && pwd )"
+
+cd "${ANSIBLE_DIR}"
+
+ansible-playbook -i inventory datawave.yml -e '{ "dw_force_redeploy": true }' $@
+
