@@ -147,4 +147,4 @@ index for this purpose.
 * The [process-wikidump.sh](tasks/files/process-wikidump.sh) script performs all the stream extraction and HDFS-write work,
   and it can be used together with *prepare-offsets.sh* to perform steps 2 and 3 above independently from Ansible, if desired
 
-[data-model]: https://code.nsa.gov/datawave/docs/latest/getting-started/data-model#primary-data-table
+[data-model]: https://code.nsa.gov/datawave/docs/2.3/getting-started/data-model#primary-data-table
