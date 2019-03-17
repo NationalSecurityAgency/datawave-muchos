@@ -1,4 +1,4 @@
-inventory/muchos*
+ansible/inventory/muchos*
 **/*.retry
 **/*.iml
 **/.idea
