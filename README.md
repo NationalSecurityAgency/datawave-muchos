@@ -32,7 +32,7 @@ Testing/verification has been performed on AWS using the following
    
 | Muchos Commit | Configuration | DataWave Commit |
 |----------|---------|---------|
-| [6e786a0](https://github.com/apache/fluo-muchos/commit/6e786a0f43e4be01ce15fe1bf9fc7aeafd46739f) | [muchos.props.example](muchos.props.example) | [116e1f8](https://github.com/NationalSecurityAgency/datawave/commit/116e1f87e2879fea498a76b4903e578cc6a06dda) |
+| [4f1a4ae](https://github.com/apache/fluo-muchos/commit/4f1a4aeae8fc8f3f880bcaff345468906a2b5092) | [muchos.props.example](muchos.props.example) | [2.6.42](https://github.com/NationalSecurityAgency/datawave/tree/2.6.42) |
 
 **Prerequisites / Assumptions**
 
@@ -47,8 +47,12 @@ Testing/verification has been performed on AWS using the following
 
 **1. Use [Muchos][muchos] to set up your cluster**
 
-   If desired, you can have Muchos launch dedicated EC2 hosts for DataWave's ingest master and web
-   server(s) by adding them as nodes of type *client* in your **muchos.props** as follows:
+   When configuring Muchos, keep in mind that you'll be installing DataWave *after* Muchos setup is
+   complete. So, you'll want to consider the future home for DataWave's ingest and web components when
+   defining the `[nodes]` section of **muchos.props**
+   
+   If desired, you can have Muchos set up dedicated hosts for these by adding nodes of type
+   *client* in **muchos.props**. For example:
    ```
      ...
      [nodes]
@@ -57,9 +61,12 @@ Testing/verification has been performed on AWS using the following
      webserver1 = client
      
    ```
-   Muchos will install and configure base dependencies on client nodes, but no service daemons will be activated.
+   Muchos will install and configure base dependencies on *client* nodes, but no service daemons will be activated.
    
+   It is not a requirement to have distinct hosts for DataWave's ingest and web services. They may coexist on the
+   the same host and/or alongside other cluster services, provided that sufficient resources exist on the target host(s).
    
+   In **Step 3** below, you'll define the target host(s) for DataWave and integrate them into your existing Ansible inventory.
 
 **2. When Muchos setup is complete, ssh to your proxy host and clone this repository.
    For example:**
