@@ -70,22 +70,22 @@ function setTestUserIdentity() {
    local OPENSSL="$( which openssl )" && [ -z "${OPENSSL}" ] && error "OpenSSL executable not found" && return 1
 
    if [ ! -f "${TEST_KEY}" ] ; then
-      ! ${OPENSSL} pkcs12 -passin "pass:secret" -passout "pass:secret" -in "${DW_CLIENT_TEST_CERT}" -out "${TEST_KEY}" -nocerts > /dev/null 2>&1 && error "Key creation failed!" && return 1
+      ! ${OPENSSL} pkcs12 -passin "env:DW_CLIENT_TEST_CERT_PASS" -passout "env:DW_CLIENT_TEST_CERT_PASS" -in "${DW_CLIENT_TEST_CERT}" -out "${TEST_KEY}" -nocerts > /dev/null 2>&1 && error "Key creation failed!" && return 1
       chmod 600 "${TEST_KEY}"
    fi
 
    if [ ! -f "${TEST_KEY_RSA}" ] ; then
-      ! ${OPENSSL} rsa -passin "pass:secret" -in "${TEST_KEY}" -out "${TEST_KEY_RSA}" > /dev/null 2>&1 && error "RSA key creation failed!" && return 1
+      ! ${OPENSSL} rsa -passin "env:DW_CLIENT_TEST_CERT_PASS" -in "${TEST_KEY}" -out "${TEST_KEY_RSA}" > /dev/null 2>&1 && error "RSA key creation failed!" && return 1
       chmod 600 "${TEST_KEY_RSA}"
    fi
 
    if [ ! -f "${TEST_CERT}" ] ; then
-      ! ${OPENSSL} pkcs12 -passin "pass:secret" -in "${DW_CLIENT_TEST_CERT}" -out "${TEST_CERT}" -clcerts -nokeys > /dev/null 2>&1 && error "Certificate creation failed!" && return 1
+      ! ${OPENSSL} pkcs12 -passin "env:DW_CLIENT_TEST_CERT_PASS" -in "${DW_CLIENT_TEST_CERT}" -out "${TEST_CERT}" -clcerts -nokeys > /dev/null 2>&1 && error "Certificate creation failed!" && return 1
       chmod 600 "${TEST_CERT}"
    fi
 
    if [ ! -f "${TEST_CA}" ] ; then
-      ! ${OPENSSL} pkcs12 -passin "pass:secret" -in "${DW_CLIENT_TEST_CERT}" -out "${TEST_CA}" -cacerts -nokeys > /dev/null 2>&1 && error "CA cert creation failed!" && return 1
+      ! ${OPENSSL} pkcs12 -passin "env:DW_CLIENT_TEST_CERT_PASS" -in "${DW_CLIENT_TEST_CERT}" -out "${TEST_CA}" -cacerts -nokeys > /dev/null 2>&1 && error "CA cert creation failed!" && return 1
       chmod 600 "${TEST_CA}"
    fi
 

@@ -15,19 +15,19 @@ dw_force_redeploy: False
 # Build
 
 dw_build_profile: "dev"
-dw_project_version: "2.4.0-SNAPSHOT"
-dw_clone_dir: "{{ cluster_basedir }}/datawave-source"
+dw_project_version: "2.6.42"
+dw_clone_dir: "{{ user_home }}/datawave-source"
 dw_repo: "https://github.com/NationalSecurityAgency/datawave.git"
-dw_checkout_version: "master"
+dw_checkout_version: "2.6.42"
 dw_read_properties_version: "2.0.1"
 dw_assert_properties_version: "2.0"
-dw_build_property_overrides_dir: "{{ cluster_basedir }}/.m2/datawave/properties"
-dw_m2_repo_dir: "{{ cluster_basedir }}/.m2/repository"
+dw_build_property_overrides_dir: "{{ user_home }}/.m2/datawave/properties"
+dw_m2_repo_dir: "{{ user_home }}/.m2/repository"
 dw_build_command: "mvn -P{{ dw_build_profile }} -Dmaven.repo.local={{ dw_m2_repo_dir }} -Ddeploy -Dtar -Ddist -DskipTests clean install"
 
 # Accumulo
 
-dw_accumulo_root_auths: [PUBLIC,PRIVATE,FOO,BAR,DEF]
+dw_accumulo_root_auths: [PUBLIC,PRIVATE,FOO,BAR,DEF,A,B,C,D,E,F,G,H,I,DW_USER,DW_SERV,DW_ADMIN,JBOSS_ADMIN]
 dw_accumulo_vfs_context_name: "datawave"
 dw_accumulo_vfs_context_dir: "/{{ dw_accumulo_vfs_context_name }}/accumulo-classpath"
 dw_accumulo_vfs_context_config: "{{ hdfs_root }}{{ dw_accumulo_vfs_context_dir }}/.*.jar"
@@ -44,6 +44,7 @@ dw_accumulo_shell_commands:
   - "config -s table.classpath.context={{ dw_accumulo_vfs_context_name }}"
   - "setauths -s {{ dw_accumulo_root_auths | join(',') }}"
   - "createtable {{ dw_query_metrics_meta_table }}"
+  - "createtable {{ dw_query_metrics_shard_table }}"
 
 # Ingest
 
@@ -96,26 +97,28 @@ dw_web_home: "{{ install_dir }}/{{ dw_web_dir }}"
 dw_web_tarball: "{{ dw_web_dir }}-{{ dw_build_profile }}.tar.gz"
 dw_web_tarball_path: "{{ dw_clone_dir }}/web-services/deploy/application/target/{{ dw_web_tarball }}"
 
-dw_wildfly_version: "10.1.0.Final"
+dw_wildfly_version: "17.0.1.Final"
 dw_wildfly_home: "{{ install_dir }}/wildfly-{{ dw_wildfly_version }}"
 dw_wildfly_tarball: "wildfly-{{ dw_wildfly_version }}.tar.gz"
-dw_wildfly_sha256: "80781609be387045273f974662dadf7f64ad43ee93395871429bc6b7786ec8bc"
+dw_wildfly_sha256: "2812b43b6c8e61f2d764a12d5a11de79481461b8cac51434ea730ee5985d38de"
 dw_wildfly_args: ""
 dw_wildfly_secure_port: 8443
 
 dw_keystore: "{{ dw_wildfly_home }}/standalone/configuration/certificates/testServer.p12"
 dw_keystore_type: PKCS12
-dw_keystore_password: secret
+dw_keystore_password: ChangeIt
 dw_truststore: "{{ dw_wildfly_home }}/standalone/configuration/certificates/ca.jks"
 dw_truststore_type: JKS
-dw_truststore_password: secret
+dw_truststore_password: ChangeIt
 dw_mysql_user_password: secret
 dw_jboss_jmx_password: secret
 dw_hornetq_cluster_password: secret
 dw_hornetq_system_password: secret
 dw_security_use_test_authservice: True
-dw_test_user_subject_dn: "cn=test a. user, ou=my department, o=my company, st=some-state, c=us"
-dw_test_user_issuer_dn: "cn=test ca, ou=my department, o=my company, st=some-state, c=us"
+dw_test_user_subject_dn: "cn=test a. user, ou=example developers, o=example corp, c=us"
+dw_test_user_issuer_dn: "cn=example corp ca, o=example corp, c=us"
 dw_test_user_accumulo_auths: "{{ dw_accumulo_root_auths }}"
 dw_test_user_webservice_roles: [AuthorizedUser,Administrator,JBossAdministrator]
 dw_query_metrics_meta_table: "datawave.queryMetrics_m"
+dw_query_metrics_shard_table: "datawave.queryMetrics_s"
+

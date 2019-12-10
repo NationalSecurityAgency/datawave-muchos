@@ -9,9 +9,9 @@
 
 - name: "stop datawave ingest"
   shell: "source ~/.bash_profile && ./stop-all.sh"
+  async: 300
+  poll: 0
   args:
     executable: /bin/bash
     chdir: "{{ dw_ingest_home }}/bin/system"
-  register: ingest_stat
   when: ingest_stop_script.stat.exists
-  changed_when: "'Stopping ingesters' in ingest_stat.stdout"

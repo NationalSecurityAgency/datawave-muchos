@@ -1,12 +1,12 @@
-wiki_dump_date: 20180620
+wiki_dump_date: 20190901
 wiki_dump_lang: en
 wiki_dump_url: http://dumps.wikimedia.your.org/{{ wiki_dump_lang }}wiki/{{ wiki_dump_date }}
 wiki_dump_local_dir: /tmp/{{ wiki_dump_lang }}wiki-{{ wiki_dump_date }}
 
 wiki_multistream_xml_bz2: "{{ wiki_dump_lang }}wiki-{{ wiki_dump_date }}-pages-articles-multistream.xml.bz2"
-wiki_multistream_xml_bz2_sha1: 458ad6db75a6ef9cf4e9fc617cb592ab4fbbb11e
+wiki_multistream_xml_bz2_sha1: f86c0be1632892a081f83a30ff3b03b31d253d07
 wiki_multistream_index_txt_bz2: "{{ wiki_dump_lang }}wiki-{{ wiki_dump_date }}-pages-articles-multistream-index.txt.bz2"
-wiki_multistream_index_txt_bz2_sha1: 2b8eaf87844661a1692afcfca5a2dc00008ffbe2
+wiki_multistream_index_txt_bz2_sha1: 65e0f460feb237156ce3d641ff8db030c894c766
 
 wiki_hdfs_ingest_input_dir: "{{ dw_hdfs_base_dir }}/wikipedia"
 

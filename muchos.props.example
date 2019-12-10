@@ -1,10 +1,11 @@
-# Copyright 2014 Muchos authors (see AUTHORS)
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,33 +14,42 @@
 # limitations under the License.
 
 [general]
-# Type of cloud service (ec2 or baremetal)
-cloud_provider = ec2
+# Cluster type (ec2 or existing)
+cluster_type = ec2
 # Cluster user name (install command will SSH to cluster using this user)
 # Leave default below if launching cluster in AWS
 cluster_user = centos
-# Cluster base directory where install/ & tarballs/ directories are created
-# Leave default below if launching cluster in AWS
-cluster_basedir = /home/centos
+# Cluster user group
+cluster_group = %(cluster_user)s
+# Cluster user home directory
+user_home = /home/%(cluster_user)s
+# Install directory where Hadoop, Accumulo, etc will be installed
+install_dir = %(user_home)s/install
 # Hostname of proxy node that Muchos will use to direct installation of cluster.  Will be given
 # public IP if launching in EC2.  If not launching in EC2, node must have public IP that can be reached
 # from your machine. Hostname can be chosen from "nodes" section below.
 proxy_hostname = leader1
-# Cluster network interface (leave default if launching in AWS)
-network_interface=eth0
 # If set, a SOCKS proxy will be created on the specified port when connecting to proxy using 'muchos ssh <cluster>'
 #proxy_socks_port = 38585
 # Accumulo Instance name
 accumulo_instance = muchos
 # Accumluo Password
 accumulo_password = secret
-# Software versions
-hadoop_version = 2.8.4
-zookeeper_version = 3.4.13
+# Software versions (set sha-256 in conf/checksums)
+hadoop_version = 2.9.2
+zookeeper_version = 3.4.14
 spark_version = 2.3.2
 fluo_version = 1.2.0
 fluo_yarn_version = 1.0.0
-accumulo_version = 1.9.2
+accumulo_version = 1.9.3
+# Specifies if software should be downloaded. If 'False', tarballs of the software above should be in conf/upload/
+download_software = True
+# Install Hub (for GitHub)
+install_hub = True
+# The java package to install
+java_package=java-1.8.0-openjdk-devel
+# The package to use for java 11
+# java_package=java-11-openjdk-devel
 
 [ec2]
 # AWS machine image to use. The default below is for a CentOS 7 image (in us-east-1).
@@ -48,10 +58,13 @@ accumulo_version = 1.9.2
 #   https://aws.amazon.com/marketplace/pp/B00O7WM7QW
 aws_ami = ami-9887c6e7
 # Type of AWS instance launched by default
-default_instance_type = m5d.large
+default_instance_type = m5d.2xlarge
 # Type of AWS instance launched for any node running 'worker' service
 # Leave default below to use same instance type set by 'default_instance_type' property
 worker_instance_type = %(default_instance_type)s
+# Enable template mode by selecting a template from conf/templates, in order to leverage your own
+# custom EC2 launch requests (optional). See conf/templates/README.md for more information
+#cluster_template = example
 # VPC to launch instances in (optional)
 #vpc_id = vpc-xxxxx
 # VPC Subnet to launch instances in (optional)
@@ -78,17 +91,19 @@ shutdown_delay_minutes = 0
 # Shutdown behavior of EC2 instances: terminate or stop
 shutdown_behavior = stop
 
-[baremetal]
-mount_root = /var/disk
-mounts = /var/disk01,/var/disk02,/var/disk03
-devices = /dev/hdb1,/dev/hdc1,/dev/hdd1
-metrics_drive_ids = var-disk01,var-disk02,var-disk03
+[existing]
+# Root of data dirs
+mount_root = /var/data
+# Data directories on all nodes
+data_dirs = /var/data1,/var/data2,/var/data3
+# Identifies drives for metrics
+metrics_drive_ids = var-data1,var-data2,var-data3
 
 [performance]
 # Automatically tune Accumulo, Yarn, and Fluo performance setting by selecting or
 # creating a performance profile.  Try not to use more memory than each node has
 # and leave some space for the OS.
-profile=perf-medium
+profile=perf-large
 
 # Below are different performance profiles that can be selected.  Each profile
 # has the same properties with different values.
@@ -150,7 +165,7 @@ yarn_nm_mem_mb=16384
 # <Hostname> = <Service1>[,<Service2>,<Service3>]
 # Where:
 #   Hostname = Must be unique.  Will be used for hostname in EC2 or should match hostname on your own cluster
-#   Service = Service to run on node (possible values: zookeeper, namenode, resourcemanager, accumulomaster, client,
+#   Service = Service to run on node (possible values: zookeeper, namenode, resourcemanager, accumulomaster, client, swarmmanager,
 #             mesosmaster, worker, fluo, metrics, spark). The following services are required: namenode, resourcemanager,
 #             accumulomaster, zookeeper & worker
 leader1 = namenode,resourcemanager

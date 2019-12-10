@@ -4,7 +4,7 @@
 - name: "install wildfly tarball"
   unarchive: src={{ tarballs_dir }}/{{ dw_wildfly_tarball }} dest={{ install_dir }} creates={{ dw_wildfly_home }}
 
-- name: "set WILDFLY_HOME, JBOSS_HOME, HADOOP_HOME"
+- name: "set WILDFLY_HOME, JBOSS_HOME"
   lineinfile:
     path: "/home/{{ cluster_user }}/.bashrc"
     regexp: "^export {{ item }}="
@@ -14,6 +14,15 @@
   with_items:
     - WILDFLY_HOME
     - JBOSS_HOME
+
+- name: "set HADOOP_HOME"
+  lineinfile:
+    path: "/home/{{ cluster_user }}/.bashrc"
+    regexp: "^export {{ item }}="
+    line: "export {{ item }}={{ hadoop_home }}"
+    state: present
+    insertafter: EOF
+  with_items:
     - HADOOP_HOME
 
 - name: "configure wildfly"

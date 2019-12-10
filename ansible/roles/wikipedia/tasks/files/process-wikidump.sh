@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ~/.bash_profile
+
 #
 # The purpose of this script is to allow you to control the quantity and rate
 # of bz2 stream extraction from the specified Wikipedia dump, and optionally

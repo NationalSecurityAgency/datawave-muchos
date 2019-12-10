@@ -1,7 +1,10 @@
-# If ingestmaster is not on a dedicated host, there's a chance this task will fail due
-# to false-positives, that is, finding datawave processes that are unrelated to ingest
+# If ingestmaster is not on a dedicated host, there's a small chance this task will fail due
+# to false-positives, that is, finding processes that are unrelated to datawave ingest
+
 - name: "uninstall ingest: if this task fails, then there are datawave ingest processes still running that must be stopped"
-  shell: "pgrep -f datawave"
+  shell: pgrep -f 'ingest-server.sh|Dapp=FlagMaker|mapreduce.job.BulkIngestMapFileLoader|datawave.ingest.mapreduce.job.IngestJob|ingest/cleanup-server.py'
+  args:
+    executable: /bin/bash
   register: pgrep_ingest_stat
   failed_when: pgrep_ingest_stat.rc == 0
   retries: 4
@@ -31,4 +34,3 @@
     state: absent
   with_items: "{{ ingest_dirs_to_delete.files }}"
   when: ingest_dirs_to_delete.matched|int > 0
-
