@@ -1,4 +1,3 @@
-
 # Post-deployment options
 
 dw_install_web_client: True
@@ -15,12 +14,10 @@ dw_force_redeploy: False
 # Build
 
 dw_build_profile: "dev"
-dw_project_version: "2.6.42"
+dw_project_version: "2.6.41"
 dw_clone_dir: "{{ user_home }}/datawave-source"
 dw_repo: "https://github.com/NationalSecurityAgency/datawave.git"
-dw_checkout_version: "2.6.42"
-dw_read_properties_version: "2.0.1"
-dw_assert_properties_version: "2.0"
+dw_checkout_version: "2.6.41"
 dw_build_property_overrides_dir: "{{ user_home }}/.m2/datawave/properties"
 dw_m2_repo_dir: "{{ user_home }}/.m2/repository"
 dw_build_command: "mvn -P{{ dw_build_profile }} -Dmaven.repo.local={{ dw_m2_repo_dir }} -Ddeploy -Dtar -Ddist -DskipTests clean install"

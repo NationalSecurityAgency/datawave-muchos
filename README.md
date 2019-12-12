@@ -32,7 +32,7 @@ Testing/verification has been performed on AWS using the following
    
 | Muchos Commit | Configuration | DataWave Commit |
 |----------|---------|---------|
-| [4f1a4ae](https://github.com/apache/fluo-muchos/commit/4f1a4aeae8fc8f3f880bcaff345468906a2b5092) | [muchos.props.example](muchos.props.example) | [2.6.42](https://github.com/NationalSecurityAgency/datawave/tree/2.6.42) |
+| [4f1a4ae](https://github.com/apache/fluo-muchos/commit/4f1a4aeae8fc8f3f880bcaff345468906a2b5092) | [muchos.props.example](muchos.props.example) | [2.6.41](https://github.com/NationalSecurityAgency/datawave/tree/2.6.41) |
 
 **Prerequisites / Assumptions**
 
